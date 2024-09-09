@@ -1,0 +1,14 @@
+PROMISE num_t_outputs=0
+PROMISE distance=3
+PROMISE num_t_used=12
+
+ALLOC XXXX
+T Z__Y
+T _Z_Y
+T __ZY
+T ZZZY
+T _ZZZ
+T Z_ZZ
+T ZZ_Z
+T ZZZ_
+POSTSELECT_RELEASE -T0 -T1 -T2 -T3

@@ -1,0 +1,146 @@
+#!/usr/bin/env python
+import argparse
+import pathlib
+import sys
+
+import numpy as np
+import stim
+from matplotlib import pyplot as plt
+
+src_path = pathlib.Path(__file__).parent.parent / 'src'
+assert src_path.exists()
+sys.path.append(str(src_path))
+
+import gen
+from cultiv import ErrorEnumerationReport
+from cultiv._error_set import analyze_solerr_discard_vs_error_rate
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--max_weight', type=int)
+    parser.add_argument('--circuits', type=str, default=None, nargs='+')
+    parser.add_argument('--cache_file', type=str, default=None)
+    parser.add_argument('--dems', type=str, default=None, nargs='+')
+    parser.add_argument('--force_si1000', default=None, type=float)
+    parser.add_argument('--force_uniform', default=None, type=float)
+    parser.add_argument('--show_discard_analysis', action='store_true')
+    parser.add_argument('--save_circuit_viewer', default=None, type=str)
+    parser.add_argument('--save_match_graph', default=None, type=str)
+    args = parser.parse_args()
+    assert args.max_weight >= 0
+    if (args.circuits is None) == (args.dems is None):
+        print("Specify --circuits or --dems (not both).", file=sys.stderr)
+        sys.exit(1)
+    if args.circuits is not None:
+        paths = args.circuits
+        is_circuit = True
+    elif args.dems is not None:
+        paths = args.dems
+        is_circuit = False
+        if args.force_si1000 is not None:
+            print("Can't use --force_si1000 with --dems; must use --circuits instead.", file=sys.stderr)
+            sys.exit(1)
+        if args.force_uniform is not None:
+            print("Can't use --force_uniform with --dems; must use --circuits instead.", file=sys.stderr)
+            sys.exit(1)
+    else:
+        raise NotImplementedError()
+
+    if args.cache_file is not None and pathlib.Path(args.cache_file).exists():
+        cache = ErrorEnumerationReport.read_cache_file(args.cache_file)
+    else:
+        cache = {}
+
+    original_cache = cache.copy()
+    for f in paths:
+        print(f)
+        if is_circuit:
+            circuit = stim.Circuit.from_file(f)
+            if args.force_si1000 is not None:
+                assert args.force_uniform is None
+                noise = gen.NoiseModel.si1000(args.force_si1000)
+                circuit = circuit.without_noise()
+                circuit = gen.transpile_to_z_basis_interaction_circuit(circuit)
+                circuit = noise.noisy_circuit_skipping_mpp_boundaries(circuit)
+            if args.force_uniform is not None:
+                noise = gen.NoiseModel.uniform_depolarizing(args.force_uniform)
+                circuit = circuit.without_noise()
+                circuit = noise.noisy_circuit_skipping_mpp_boundaries(circuit)
+            if args.save_circuit_viewer is not None:
+                err = circuit.search_for_undetectable_logical_errors(
+                    dont_explore_edges_with_degree_above=4,
+                    dont_explore_edges_increasing_symptom_degree=False,
+                    dont_explore_detection_event_sets_with_size_above=4,
+                    canonicalize_circuit_errors=True,
+                )
+                print(f"    distance: {len(err)}")
+                gen.write_file(args.save_circuit_viewer, gen.stim_circuit_html_viewer(circuit, known_error=err))
+            if args.save_match_graph is not None:
+                gen.write_file(args.save_match_graph, circuit.detector_error_model().diagram('matchgraph-3d-html'))
+            dem = circuit.detector_error_model()
+            print("    determined measurements:", circuit.count_determined_measurements())
+        else:
+            dem = stim.DetectorErrorModel.from_file(f)
+            if args.save_match_graph is not None:
+                gen.write_file(args.save_match_graph, dem.diagram('matchgraph-3d-html'))
+
+        report = ErrorEnumerationReport.from_dem(dem, max_weight=args.max_weight, cache=cache)
+        if args.cache_file is not None:
+            key = report.error_set.strong_id(max_weight=args.max_weight)
+            if key not in original_cache:
+                assert key in cache
+                val = cache[key]
+                original_cache[key] = cache[key]
+                lines = [f'ENTRY {key}']
+                for term in val:
+                    lines.append(','.join(str(e) for e in term))
+                with open(args.cache_file, 'a') as cf:
+                    print('\n    '.join(lines), file=cf, flush=True)
+        print(f"    errors flipping obs: {sum(err.obs for err in report.error_set.errors)}")
+
+        print(f"    detectors: {dem.num_detectors}")
+        print(f"    observables: {dem.num_observables}")
+        print(f"    unique_errors: {len(report.error_set.errors)}")
+        print(f"    discard_rate: {report.discard_rate:.3g}")
+        print(f"    retry_gain_factor: {report.retry_gain_factor:.3g}")
+
+        if args.save_match_graph is not None:
+            dem2 = stim.DetectorErrorModel()
+            for inst in dem.flattened():
+                if inst.type != 'error':
+                    dem2.append(inst)
+            src_err_set = {
+                e
+                for err in report.logical_errs
+                for e in err.src_errors
+            }
+            for e in src_err_set:
+                dem2.append(report.error_set.errors[e].to_error_instruction())
+            gen.write_file(str(args.save_match_graph) + '.filter.html', dem2.diagram('matchgraph-3d-html'))
+        equation = []
+        for weight in range(args.max_weight + 1):
+            p = report.distance_to_heralded_error_rate[weight]
+            print(f"    kept_error_rate_order_{weight}: {p:.2g}")
+            if p:
+                equation.append(f'{p:.2g}*s^{weight}')
+        equation.append(f'O(s^{args.max_weight + 1})')
+        print(f"    kept_error_rate: " + " + ".join(equation))
+        print(f"    unique_logical_errors: {len(report.logical_errs)}")
+
+        if args.show_discard_analysis:
+            xs, ys = analyze_solerr_discard_vs_error_rate(report.error_set, report.logical_errs)
+            plt.plot(xs, np.array(ys) / report.keep_rate, marker='x')
+            plt.semilogy()
+            plt.xlim(0, 1)
+            plt.ylim(1e-12, 1)
+            plt.grid(which='minor')
+            plt.grid(color='black')
+            plt.title(f"Transitioning from postselect-all to allow-individual-errors\nc={f}")
+            plt.xlabel("Logical Error Rate (per shot)")
+            plt.ylabel("Discard Rate")
+            plt.show()
+
+
+if __name__ == '__main__':
+    main()

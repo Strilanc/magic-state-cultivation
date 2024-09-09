@@ -1,0 +1,10 @@
+chromobius ~= 1.1.0
+matplotlib
+networkx
+numpy
+pymatching
+pygltflib
+pytest
+scipy
+sinter ~= 1.14.0
+stim ~= 1.14.0

@@ -1,0 +1,86 @@
+PROMISE distance=5
+PROMISE assume_checks_fail_with_certainty=True
+PROMISE num_t_used=49
+PROMISE max_storage=6
+
+ALLOC XXXX
+T -__Z_
+T +_ZZ_
+T +Z_Z_
+T -ZZZ_
+S -X2
+
+SWAP 2 3
+T -__ZZ
+T +_ZZZ
+T +Z_ZZ
+T -ZZZZ
+S -X2
+POSTSELECT X3
+
+SWAP 2 3
+T -__ZZ
+T +_ZZZ
+T +Z_ZZ
+T -ZZZZ
+S -X2
+POSTSELECT X3
+
+SWAP 2 3
+T -__ZZ
+T +_ZZZ
+T +Z_ZZ
+T -ZZZZ
+S -X2
+POSTSELECT X3
+
+SWAP 2 3
+T -__ZZ
+T +_ZZZ
+T +Z_ZZ
+T -ZZZZ
+S -X2
+POSTSELECT X3
+
+# CCZ -> CS*CCZ
+S X2
+SWAP 0 2
+
+# [[14,2,2]] the ZZZ and Z_Z terms of the CCZ*CS
+ALLOC ____XX
+T -ZZZZZZ
+T -ZZZ_ZZ
+T -ZZZZ_Z
+T -ZZZZZ_
+T -ZZZ__Z
+T -ZZZ_Z_
+T -ZZZZ__
+T +Z_ZZZZ
+T +Z_Z_ZZ
+T +Z_ZZ_Z
+T +Z_ZZZ_
+T +Z_Z__Z
+T +Z_Z_Z_
+T +Z_ZZ__
+POSTSELECT_RELEASE __XXXX
+
+# [[15,1,3]] the ZZ_ term of CCZ*CS leaving Z__
+ALLOC __XXXX
+T +ZZ_ZZZ
+T +ZZ__ZZ
+T +ZZ_Z_Z
+T +ZZ_ZZ_
+T +ZZ___Z
+T +ZZ__Z_
+T +ZZ_Z__
+T +__ZZZZ
+T +__Z_ZZ
+T +__ZZ_Z
+T +__ZZZ_
+T +__Z__Z
+T +__Z_Z_
+T +__ZZ__
+T +__Z___
+POSTSELECT_RELEASE _XXXXX
+
+OUTPUT_RELEASE -T0

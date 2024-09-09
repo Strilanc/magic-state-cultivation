@@ -1,0 +1,22 @@
+PROMISE num_t_outputs=1
+PROMISE distance=3
+PROMISE assume_checks_fail_with_certainty=True
+PROMISE num_t_used=15
+PROMISE max_storage=5
+PROMISE num_t_checks=4
+
+ALLOC XXXXX
+T ZZZ__
+T ZZ_Z_
+T ZZ__Z
+T Z_ZZ_
+T Z_Z_Z
+T Z__ZZ
+T _ZZZ_
+T _ZZ_Z
+T _Z_ZZ
+T __ZZZ
+T ZZZZZ
+FLIP XXXXX
+POSTSELECT_RELEASE T0 T1 T2 T3
+OUTPUT_RELEASE T4

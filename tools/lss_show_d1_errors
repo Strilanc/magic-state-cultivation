@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+
+import argparse
+import hashlib
+import multiprocessing
+import os
+import pathlib
+import sys
+import time
+from typing import Any
+
+import sinter
+
+src_path = pathlib.Path(__file__).parent.parent / 'src'
+assert src_path.exists()
+sys.path.append(str(src_path))
+
+from latte.lattice_script import LatticeScript
+from latte.lattice_surgery_layer import InjectedError
+import gen
+
+
+def simulate_case(args: Any) -> tuple[InjectedError, sinter.TaskStats]:
+    script_text: str
+    error: InjectedError
+    count: int
+    script_text, error, count = args
+    script = LatticeScript.from_str(script_text)
+    shots = 0
+    errors = 0
+    discards = 0
+    strong_id = hashlib.sha256((script_text + ":" + str(error)).encode('UTF8')).hexdigest()
+    t0 = time.monotonic()
+    for _ in range(count):
+        result, _ = script.simulate(injected_errors=[error])
+        shots += 1
+        if result == 'correct':
+            pass
+        elif result == 'reject':
+            discards += 1
+        elif result == 'fail':
+            errors += 1
+        else:
+            raise NotImplementedError(f'{result=}')
+    t1 = time.monotonic()
+    return error, sinter.TaskStats(
+        json_metadata={'concat': error.pos.real, 'y': error.pos.imag, 't': error.layer, 'b': error.basis},
+        strong_id=strong_id,
+        decoder='?',
+        shots=shots,
+        errors=errors,
+        discards=discards,
+        seconds=t1 - t0,
+    )
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--script', required=True, type=str)
+    parser.add_argument('--shots', required=True, type=int)
+    parser.add_argument('--out_viewer', default=None, type=str)
+    args = parser.parse_args()
+
+    with open(args.script) as f:
+        script_text = f.read()
+        script = LatticeScript.from_str(script_text)
+    errs = [
+        err
+        for err in script.list_edge_errors()
+    ]
+
+    pool = multiprocessing.Pool(processes=os.cpu_count())
+    print(sinter.CSV_HEADER)
+    failing = set()
+    for err2, stats in pool.imap_unordered(simulate_case, [
+        (script_text, err, args.shots)
+        for err in errs
+    ]):
+        stats: sinter.TaskStats
+        if stats.errors:
+            failing.add(err2)
+        print(stats)
+
+    if args.out_viewer is not None:
+        gen.write_file(args.out_viewer, gen.viz_3d_gltf_model_html(script.to_3d_gltf_model(injected_errors=failing, wireframe=True)))
+
+
+if __name__ == '__main__':
+    main()

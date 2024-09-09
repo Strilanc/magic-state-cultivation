@@ -1,0 +1,95 @@
+PROMISE distance=4
+PROMISE num_t_used = 84
+PROMISE num_t_outputs = 4
+ALLOC XXXXXXXX___
+
+ALLOC ________XX
+T ________ZY
+T -______ZY_Y
+T -__ZY_____Y
+T __ZY__ZYZY
+T -______ZYZZ
+T __ZY__ZY_Z
+T -__ZY____ZZ
+T __ZY__ZYZ_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T -_____Z_Y_Y
+T -_Z_Y_____Y
+T _Z_Y_Z_YZY
+T -_____Z_YZZ
+T _Z_Y_Z_Y_Z
+T -_Z_Y____ZZ
+T _Z_Y_Z_YZ_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T -____Z__Y_Y
+T -Z__Y_____Y
+T Z__YZ__YZY
+T -____Z__YZZ
+T Z__YZ__Y_Z
+T -Z__Y____ZZ
+T Z__YZ__YZ_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T -____ZZZY_Y
+T -ZZZY_____Y
+T ZZZYZZZYZY
+T -____ZZZYZZ
+T ZZZYZZZY_Z
+T -ZZZY____ZZ
+T ZZZYZZZYZ_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T -_____ZZZ_Y
+T -_ZZZ_____Y
+T _ZZZ_ZZZZY
+T -_____ZZZZZ
+T _ZZZ_ZZZ_Z
+T -_ZZZ____ZZ
+T _ZZZ_ZZZZ_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T -____ZZ_Z_Y
+T -ZZ_Z_____Y
+T ZZ_ZZZ_ZZY
+T -____ZZ_ZZZ
+T ZZ_ZZZ_Z_Z
+T -ZZ_Z____ZZ
+T ZZ_ZZZ_ZZ_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T -____Z_ZZ_Y
+T -Z_ZZ_____Y
+T Z_ZZZ_ZZZY
+T -____Z_ZZZZ
+T Z_ZZZ_ZZ_Z
+T -Z_ZZ____ZZ
+T Z_ZZZ_ZZZ_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T -____ZZZ__Y
+T -ZZZ______Y
+T ZZZ_ZZZ_ZY
+T -____ZZZ_ZZ
+T ZZZ_ZZZ__Z
+T -ZZZ_____ZZ
+T ZZZ_ZZZ_Z_
+POSTSELECT_RELEASE -T8 -T9
+POSTSELECT_RELEASE -T2 -T3 -T6 -T7
+
+OUTPUT_RELEASE -T0 -T1 -T4 -T5

@@ -1,0 +1,100 @@
+              /
+     .   .   T   .
+
+     .   .   .   .
+      /   /   /
+     T   T   T   .
+=====================================
+    measures mz2456
+
+      /   /   /   /
+     T   T   Z   T
+            /|
+     X-*-X---X   .
+     |/  |/  |/   /
+     Z   Z   Z   T
+    /   /   /
+=====================================
+    measures mz0145
+    measures mz2367
+
+      /   /   /   /
+     Z   Z   Z   Z
+    /|  /|  /|  /|
+     X-*-X   X-*-X
+     |/  |/  |/  |/
+     Z   Z   Z   Z
+    /   /   /   /
+=====================================
+    measures mz1257b
+
+           /   /   /
+      Z   Z   Z   Z
+     /|  /|  /|  /
+      |/  |   |
+      Z   X---X-*-X
+          |       |
+       /  |/   /  |/
+      Z   Z   Z   Z
+     /   /   /   /
+
+    let mz1257 = mz1257b ^ mz0145
+    let s0 = mz2456 ^ mz2367 ^ mz0145
+    let s2 = mz1257
+    let s4 = mz2456 ^ mz2367
+    let s6 = mz1257 ^ mz2367
+=====================================
+    replace A with Y else Z if s0
+    replace B with Y else Z if s2
+    replace C with Y else Z if s4
+    replace D with Y else Z if s6
+    measures mxy0
+    measures mxy2
+    measures mxy4
+    measures mxy6
+
+                  /
+     .   A   B   Z
+        /   /   /
+
+                  /
+     X---X---X---X
+    /
+      /           /
+     Z   C   D   Z
+    /   /   /   /
+=====================================
+    measures mx1357
+    let pass1 = mx1357 ^ mxy0 ^ mxy2 ^ mxy4 ^ mxy6
+    discard_shot_if pass1
+
+                  /
+     .   .   Z-@-X
+             |  /
+             |
+             |    /
+     .   .   Z---X
+             |  /
+             |
+             |    /
+     X---X---Z---X
+    /           /
+=====================================
+    let f0 = mxy0 ^ mxy2 ^ mxy6
+    let f1 = mxy0 ^ mxy4 ^ mxy6
+    let f2 = mxy0 ^ mxy2 ^ mxy4
+    feedback Z at 3 if f0
+    feedback Z at 3+1j if f1
+    feedback Z at 3+2j if f2
+    feedback X at 3
+    feedback X at 3+1j
+    feedback X at 3+2j
+    output_should_be CCZ
+
+                 /
+    .   .   .   X
+               / /
+    .   .   .   X
+               / /
+    .   .   .   X
+               /

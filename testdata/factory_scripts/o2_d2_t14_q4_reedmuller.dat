@@ -1,0 +1,26 @@
+PROMISE num_t_outputs=2
+PROMISE max_storage=4
+PROMISE distance=2
+PROMISE num_t_used=14
+PROMISE num_t_checks=0
+PROMISE max_storage=4
+
+ALLOC XXXX
+T ZZZZ
+T ZZZ_
+T ZZ_Z
+T Z_ZZ
+T ZZ__
+T Z_Z_
+T Z__Z
+OUTPUT_RELEASE -T0
+ALLOC X0
+T ZZZZ
+T ZZZ_
+T ZZ_Z
+T Z_ZZ
+T ZZ__
+T Z_Z_
+T Z__Z
+OUTPUT_RELEASE -T0
+POSTSELECT_RELEASE X1 X2 X3

@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+
+import argparse
+import itertools
+import pathlib
+import sys
+
+src_path = pathlib.Path(__file__).parent.parent / 'src'
+assert src_path.exists()
+sys.path.append(str(src_path))
+
+import cultiv
+import gen
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--basis', nargs='+', choices=['X', 'Y', 'Z', 'EPR'], required=True)
+    parser.add_argument('--gateset', nargs='+', choices=['cz', 'css'], required=True)
+    parser.add_argument('--circuit_type', nargs='+', type=str, required=True)
+    parser.add_argument('--noise_strength', nargs='+', type=float, required=True)
+    parser.add_argument('--r1', nargs='+', type=str, default=[None])
+    parser.add_argument('--d1', nargs='+', type=int, default=[None])
+    parser.add_argument('--d2', nargs='+', type=str, default=[None])
+    parser.add_argument('--skip_if', type=str, default="False")
+    parser.add_argument('--r2', nargs='+', type=str, default=[None])
+    parser.add_argument('--v', nargs='+', type=int, default=[None])
+    parser.add_argument('--out_dir', type=str, required=True)
+    parser.add_argument('--debug', action='store_true')
+    args = parser.parse_args()
+    out_dir = pathlib.Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    for (
+        basis,
+        noise_strength,
+        gateset,
+        d1,
+        d2,
+        circuit_type,
+        r1,
+        r2,
+        v,
+    ) in itertools.product(
+        args.basis,
+        args.noise_strength,
+        args.gateset,
+        args.d1,
+        args.d2,
+        args.circuit_type,
+        args.r1,
+        args.r2,
+        args.v,
+    ):
+        if r1 is not None:
+            r1 = int(eval(r1, {}, {'d1': d1, 'd2': d2}))
+        if d2 is not None:
+            d2 = int(eval(d2, {}, {'d1': d1}))
+        if r2 is not None:
+            r2 = int(eval(r2, {}, {'d1': d1, 'd2': d2}))
+        if eval(args.skip_if, {}, {'d1': d1, 'd2': d2, 'r1': r1, 'r2': r2, 'circuit_type': circuit_type}):
+            continue
+        if circuit_type == 'escape-to-big-matchable-code':
+            circuit = cultiv.make_escape_to_big_matchable_code_circuit(
+                dcolor=d1,
+                dsurface=d2,
+                basis=basis,
+                r_growing=r1,
+                r_end=r2,
+            )
+            v = None
+        elif circuit_type == 'idle-matchable-code':
+            circuit = cultiv.make_idle_matchable_code_circuit(dcolor=d1, dsurface=d2, basis=basis, rounds=r2)
+            r1 = None
+            v = None
+        elif circuit_type == 'surface-code-memory':
+            circuit = cultiv.make_surface_code_memory_circuit(dsurface=d2, basis=basis, rounds=r2)
+            r1 = None
+            d1 = None
+            v = None
+        elif circuit_type == 'inject[teleport]+cultivate':
+            circuit = cultiv.make_inject_and_cultivate_circuit(inject_style='degenerate', dcolor=d1, basis=basis)
+            r1 = None
+            r2 = None
+            d2 = None
+            v = None
+        elif circuit_type == 'inject[bell]+cultivate':
+            circuit = cultiv.make_inject_and_cultivate_circuit(inject_style='bell', dcolor=d1, basis=basis)
+            r1 = None
+            r2 = None
+            d2 = None
+            v = None
+        elif circuit_type == 'inject[unitary]+cultivate':
+            circuit = cultiv.make_inject_and_cultivate_circuit(inject_style='unitary', dcolor=d1, basis=basis)
+            r1 = None
+            r2 = None
+            d2 = None
+            v = None
+        elif circuit_type == 'end2end-inplace-distillation':
+            circuit = cultiv.make_end2end_cultivation_circuit(
+                dcolor=d1,
+                dsurface=d2,
+                basis=basis,
+                r_growing=r1,
+                r_end=r2,
+                inject_style='unitary',
+            )
+            v = None
+        elif circuit_type == 'escape-to-big-color-code':
+            circuit = cultiv.make_escape_to_big_color_code_circuit(
+                start_width=d1,
+                end_width=d2,
+                rounds=r2,
+                basis=basis,
+            )
+            r1 = None
+            v = None
+        elif circuit_type == 'surface-code-cnot':
+            circuit = cultiv.make_surface_code_cnot(
+                distance=d2,
+                basis=basis,
+            )
+            r1 = None
+            v = None
+            r2 = None
+            d1 = None
+        else:
+            raise NotImplementedError(f'{circuit_type=}')
+
+        if args.debug:
+            gen.write_file(out_dir / 'debug-circuit.html', gen.stim_circuit_html_viewer(circuit))
+
+        if gateset == 'cz':
+            noise = 'si1000'
+            circuit = gen.transpile_to_z_basis_interaction_circuit(circuit)
+            noise_model = gen.NoiseModel.si1000(noise_strength)
+        else:
+            noise = 'uniform'
+            noise_model = gen.NoiseModel.uniform_depolarizing(noise_strength)
+        noisy_circuit = noise_model.noisy_circuit_skipping_mpp_boundaries(circuit)
+
+        metadata = {
+            'c': circuit_type,
+            'p': noise_strength,
+            'noise': noise,
+            'g': gateset,
+            'q': noisy_circuit.num_qubits,
+            'b': basis,
+            'r': gen.count_measurement_layers(circuit),
+            'r1': r1 or None,
+            'd1': d1 or None,
+            'r2': r2 or None,
+            'd2': d2 or None,
+            'v': v or None,
+        }
+        metadata = {k: v for k, v in metadata.items() if v is not None}
+        meta_str = ','.join(f'{k}={v}' for k, v in metadata.items())
+        circuit_path = out_dir / f'{meta_str}.stim'
+        noisy_circuit.to_file(circuit_path)
+        print(f'wrote {circuit_path}')
+
+
+if __name__ == '__main__':
+    main()

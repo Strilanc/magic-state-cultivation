@@ -1,0 +1,111 @@
+PROMISE distance=4
+PROMISE num_t_used = 80
+PROMISE num_t_outputs = 6
+ALLOC XXXXXXXX___
+
+ALLOC ________XX
+T ________ZY
+T ____ZZZZ_Y
+T ZZZZ_____Y
+T ZZZZZZZZZY
+T ____ZZZZZZ
+T ZZZZZZZZ_Z
+T ZZZZ____ZZ
+T ZZZZZZZZZ_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T ____ZZZ__Y
+T ZZZ______Y
+T ZZZ_ZZZ_ZY
+T ____ZZZ_ZZ
+T ZZZ_ZZZ__Z
+T ZZZ_____ZZ
+T ZZZ_ZZZ_Z_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T ____ZZ_Z_Y
+T ZZ_Z_____Y
+T ZZ_ZZZ_ZZY
+T ____ZZ_ZZZ
+T ZZ_ZZZ_Z_Z
+T ZZ_Z____ZZ
+T ZZ_ZZZ_ZZ_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T ____Z_ZZ_Y
+T Z_ZZ_____Y
+T Z_ZZZ_ZZZY
+T ____Z_ZZZZ
+T Z_ZZZ_ZZ_Z
+T Z_ZZ____ZZ
+T Z_ZZZ_ZZZ_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T ____Z__Z_Y
+T Z__Z_____Y
+T Z__ZZ__ZZY
+T ____Z__ZZZ
+T Z__ZZ__Z_Z
+T Z__Z____ZZ
+T Z__ZZ__ZZ_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T ____ZZ___Y
+T ZZ_______Y
+T ZZ__ZZ__ZY
+T ____ZZ__ZZ
+T ZZ__ZZ___Z
+T ZZ______ZZ
+T ZZ__ZZ__Z_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T ____Z_Z__Y
+T Z_Z______Y
+T Z_Z_Z_Z_ZY
+T ____Z_Z_ZZ
+T Z_Z_Z_Z__Z
+T Z_Z_____ZZ
+T Z_Z_Z_Z_Z_
+POSTSELECT_RELEASE -T8 -T9
+
+ALLOC ________XX
+T ________ZY
+T ____Z____Y
+T Z________Y
+T Z___Z___ZY
+T ____Z___ZZ
+T Z___Z____Z
+T Z_______ZZ
+T Z___Z___Z_
+POSTSELECT_RELEASE -T8 -T9
+POSTSELECT_RELEASE X0 X4
+
+# Verify CCZ
+MAGIC_PERFECT_T _ZZZ_______
+MAGIC_PERFECT_T _ZZ________
+MAGIC_PERFECT_T __ZZ_______
+MAGIC_PERFECT_T _Z_Z_______
+OUTPUT_RELEASE -T1
+OUTPUT_RELEASE -T2
+OUTPUT_RELEASE -T3
+
+# Verify CCZ
+MAGIC_PERFECT_T _____ZZZ___
+MAGIC_PERFECT_T _____ZZ____
+MAGIC_PERFECT_T ______ZZ___
+MAGIC_PERFECT_T _____Z_Z___
+OUTPUT_RELEASE -T5
+OUTPUT_RELEASE -T6
+OUTPUT_RELEASE -T7

@@ -1,0 +1,7 @@
+.idea/
+out/
+__pycache__/
+.pytest_cache/
+tmp.html
+tmp.svg
+tmp.csv

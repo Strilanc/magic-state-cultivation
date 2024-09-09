@@ -1,0 +1,180 @@
+
+        .    .    .
+
+
+        T----X----X
+                  |
+                  |/
+        .    .    Z
+
+===============================================
+        .    .    .
+
+
+        T----X----X
+             |    |
+             |/   |/
+        .    Z    Z
+                 /
+===============================================
+                   /
+        .    .    Z
+                  |
+                  |
+        T----X----X
+                  |
+              /   |/
+        .    Z    Z
+            /    /
+===============================================
+        measures m_234
+
+                   /
+        .    .    Z
+                 /|
+                  |
+        T-*--X----X
+             |    |
+             |/   |/
+        .    Z    Z
+            /    /
+===============================================
+
+              /    /
+        .    Z    Z
+             |   /
+             |
+        T----X----X
+                  |
+              /   |/
+        .    Z    Z
+            /    /
+
+===============================================
+        measures m1_34
+
+              /    /
+        .    Z    Z
+            /|   /
+             |
+        T-*--X----X
+             |    |
+             |/   |/
+        .    Z    Z
+            /    /
+===============================================
+        measures m12_4
+
+              /    /
+        .    Z    Z
+            /|   /|
+             |    |
+        T-*--X----X
+                  |
+              /   |/
+        .    Z    Z
+            /    /
+
+===============================================
+        measures m1234
+
+              /    /
+        .    Z    Z
+            /|   /|
+             |    |
+        T-*--X----X
+             |    |
+             |/   |/
+        .    Z    Z
+            /    /
+
+===============================================
+              /    /
+        .    Z    Z
+            /    /
+         /
+        Y    .    .
+
+              /    /
+        .    Z    H
+            /    /
+
+        let s1 = m12_4 ^ m1_34 ^ m1234
+        let s2 = m12_4 ^ m_234 ^ m1234
+        let s3 = m1_34 ^ m_234 ^ m1234
+        let s4 = m12_4 ^ m1234 ^ m1_34 ^ m_234
+===============================================
+        replace A with | else _ if s1
+        replace B with | else _ if s2
+        replace C with | else _ if s3
+        replace DDDD with --@- else ____ if s4
+        measures s4_apply
+        measures cmp
+        let quarter_turns = m12_4 + m1234 + m1_34 + m_234
+        let upside_down = 0 < quarter_turns < 3
+        let s4_applied = s4_apply & s4
+        let failed = upside_down ^ cmp ^ s4_applied
+        discard_shot_if failed
+
+              /    /
+        .    Z    Z
+            /A   /B
+             A    B
+        XDDDDX--*-X
+       /     C    |
+             C    |
+             C/   |
+        .    Z    Z
+            /    /
+===============================================
+         /    /    /
+        Z    Z    Z
+        |   /    /
+        |     /    /
+        Z    Y    Y
+        |
+        |
+        |          /
+        Z----Z    Y
+            /
+===============================================
+        replace A with | else _ if s1
+        replace B with * else _ if s1
+        replace C with | else _ if s2
+        replace D with * else _ if s2
+        replace E with | else _ if s3
+        measures sC
+        measures sA
+        measures sB
+
+         /    /    /
+        Z    Z    Z
+       /E   /A   /C
+        E    B    D
+        E    A    C
+        X    Z    Z
+        |   /    /
+        *
+        |
+        X----X----X
+                 /
+
+        feedback X at 1 if m_234
+        feedback Z at 2 if m_234
+        feedback Z at 0 if m_234
+        feedback Z at 1 if m1_34
+        feedback X at 2 if m1_34
+        feedback Z at 0 if m1_34
+        feedback Z at 1 if m12_4
+        feedback Z at 2 if m12_4
+        feedback X at 0 if m12_4
+        feedback Y at 1 if m1234
+        feedback Y at 2 if m1234
+        feedback Y at 0 if m1234
+        feedback Z at 1 if s1 & sA
+        feedback Z at 2 if s2 & sB
+        feedback Z at 0 if s3 & sC
+        feedback X at 1
+        feedback X at 2
+        feedback X at 0
+        output_should_be CCZ

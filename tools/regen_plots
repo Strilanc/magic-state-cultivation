@@ -1,0 +1,294 @@
+#!/usr/bin/env python3
+
+import argparse
+import collections
+import pathlib
+import sys
+
+import sinter
+
+src_path = pathlib.Path(__file__).parent.parent / 'src'
+assert src_path.exists()
+sys.path.append(str(src_path))
+
+import gen
+import cultiv
+
+
+def write_gap_plot(path: pathlib.Path):
+    circuit = cultiv.make_end2end_cultivation_circuit(dcolor=5, dsurface=15, basis='Y', r_growing=5, r_end=4, inject_style='unitary')
+    circuit = gen.NoiseModel.uniform_depolarizing(1e-3).noisy_circuit_skipping_mpp_boundaries(circuit)
+    dec = cultiv.DesaturationSampler().compiled_sampler_for_task(sinter.Task(circuit=circuit, detector_error_model=circuit.detector_error_model()))
+
+    scores = []
+    for d in range(circuit.num_detectors):
+        scores.append(dec.decode_det_set({d}))
+
+    codes = gen.circuit_to_cycle_code_slices(circuit)
+    ticks = codes.keys()
+    codes = [code.with_transformed_coords(lambda e: e * (1 + 1j)) for code in codes.values()]
+
+    max_gap = max(e for _, e in scores)
+    def tile_coloring(tile: gen.Tile) -> tuple[float, float, float] | None:
+        dr, = tile.flags
+        dr = int(dr)
+        prediction, gap = scores[dr]
+        if gap == 0:
+            return 0.5, 0.5, 0.5
+        return min(gap / max_gap, 1), 0, 0
+
+    codes[0].write_svg(
+        path,
+        canvas_height=1000,
+        other=codes[1:],
+        title=[f'tick={e}' for e in sorted(ticks)],
+        tile_color_func=tile_coloring,
+        show_coords=False,
+        show_obs=False,
+    )
+
+
+def color_code_matchable_svg() -> str:
+    lines = [
+        f"""<svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">"""
+    ]
+    for basis in 'XZ':
+        code = cultiv.make_hybrid_color_surface_code(dcolor=5, dsurface=10, obs_location='transition').stabilizers
+        if basis == 'X':
+            code = code.with_only_x_tiles()
+        else:
+            code = code.with_only_z_tiles()
+        tile_pairs = set()
+        d2tiles = collections.defaultdict(list)
+        for tile in code.tiles:
+            for q in tile.data_set:
+                d2tiles[q].append(tile)
+        for d in code.data_set:
+            ts = d2tiles[d]
+            if len(ts) == 3:
+                a, b, c = ts
+                tile_pairs.add(tuple(sorted([a, b])))
+                tile_pairs.add(tuple(sorted([b, c])))
+                tile_pairs.add(tuple(sorted([a, c])))
+
+        tile_reps = {}
+        for tile in code.tiles:
+            vs = list(tile.data_set)
+            if not tile.data_set:
+                continue
+            if len(tile.data_set) == 2:
+                a, b = gen.sorted_complex(tile.data_set)
+                if b != a + 1:
+                    vs.append(tile.measure_qubit)
+            tile_reps[tile] = sum(vs) / len(vs)
+        for a, b in sorted(tile_pairs):
+            a1 = a.measure_qubit
+            a1 += 0.5 if basis == 'X' else -0.5
+            if len(a.data_set) == 5:
+                a1 = tile_reps[a]
+            b1 = b.measure_qubit
+            b1 += 0.5 if basis == 'X' else -0.5
+            if len(b.data_set) == 5:
+                b1 = tile_reps[b]
+            c = (a1 + b1) / 2
+            tile_reps[(a, b)] = c
+            tile_reps[(b, a)] = c
+
+        m2i = {}
+        for q in gen.sorted_complex(set(tile_reps.values())):
+            m2i[q] = len(m2i)
+
+        for d in code.data_set:
+            ts = d2tiles[d]
+            if len(ts) == 2:
+                pass
+
+        if basis == 'X':
+            q2p = lambda q: (q * (1 + 1j) * 9 + 20j + 228) * 2.5
+        else:
+            q2p = lambda q: (q * (1 + 1j) * 9 + 20j + 28) * 2.5
+
+        for tile in code.tiles:
+            if not tile.data_set:
+                continue
+            path = gen.svg_path_directions_for_tile(
+                tile=tile,
+                draw_coord=q2p,
+            )
+            fill = '#FFD0D0' if 'color=r' in tile.flags else '#D0FFD0' if 'color=g' in tile.flags else '#D0D0FF' if 'color=b' in tile.flags else '#D0D0D0'
+            lines.append(f"""<path d="{path}" fill="{fill}" />""")
+
+        for d in code.data_set:
+            ts = d2tiles[d]
+            if len(ts) == 3:
+                a, b, c = ts
+                tile_pairs.add(tuple(sorted([a, b])))
+                tile_pairs.add(tuple(sorted([b, c])))
+                tile_pairs.add(tuple(sorted([a, c])))
+                for x in a, b, c:
+                    start = q2p(tile_reps[x])
+                    end = q2p(tile_reps[tuple({a, b, c} - {x})])
+                    stroke = '#A00000' if 'color=r' in x.flags else '#00A000' if 'color=g' in x.flags else '#0000A0' if 'color=b' in x.flags else '#000000'
+                    lines.append(f"""<path d="M {start.real} {start.imag} L {end.real} {end.imag}" stroke="{stroke}" fill="none" stroke-width="2.0" />""")
+            elif len(ts) == 2:
+                a, b = ts
+                if (a, b) in tile_pairs:
+                    v = tile_reps[(a, b)]
+                    start = q2p(v)
+                    r = abs(d - v)
+                    if r == 0:
+                        r = 1
+                    end = q2p(v + (d - v) * (r + 0.5) / r)
+                    flags = a.flags | b.flags
+                    fill = '#A00000' if 'color=r' not in flags else '#00A000' if 'color=g' not in flags else '#0000A0' if 'color=b' not in flags else '#000000'
+                    lines.append(f"""<path d="M {start.real} {start.imag} L {end.real} {end.imag}" stroke="{fill}" fill="none" stroke-width="2.0" />""")
+
+                    start = q2p(tile_reps[a])
+                    mid = q2p(v + (d - v) * 1.4)
+                    end = q2p(tile_reps[b])
+                    fill = '#00A0A0' if 'color=r' not in flags else '#A000A0' if 'color=g' not in flags else '#A0A000' if 'color=b' not in flags else '#000000'
+                    lines.append(f"""<path d="M {start.real} {start.imag} C {mid.real} {mid.imag}, {mid.real} {mid.imag}, {end.real} {end.imag}" stroke="{fill}" fill="none" stroke-width="2.0" />""")
+                else:
+                    start = q2p(tile_reps[a])
+                    end = q2p(tile_reps[b])
+                    lines.append(f"""<path d="M {start.real} {start.imag} L {end.real} {end.imag}" stroke="black" fill="none" stroke-width="2.0" />""")
+            elif len(ts) == 1:
+                a, = ts
+                v = tile_reps[a]
+                start = q2p(v)
+                r = abs(d - v)
+                end = q2p(v + (d - v) * (r + 0.3) / r)
+                flags = a.flags
+                stroke = '#A00000' if 'color=r' in flags else '#00A000' if 'color=g' in flags else '#0000A0' if 'color=b' in flags else '#000000'
+                lines.append(f"""<path d="M {start.real} {start.imag} L {end.real} {end.imag}" stroke="{stroke}" fill="none" stroke-width="2.0" />""")
+
+        for tile in code.tiles:
+            if not tile.data_set:
+                continue
+            rep = q2p(tile_reps[tile])
+            fill = '#A00000' if 'color=r' in tile.flags else '#00A000' if 'color=g' in tile.flags else '#0000A0' if 'color=b' in tile.flags else '#000000'
+            lines.append(f"""<circle cx="{rep.real}" cy="{rep.imag}" r="8" fill="{fill}" />""")
+
+        for k, v in tile_reps.items():
+            if isinstance(k, tuple):
+                a, b = k
+                if a < b:
+                    rep = q2p(v)
+                    flags = a.flags | b.flags
+                    fill = '#00A0A0' if 'color=r' not in flags else '#A000A0' if 'color=g' not in flags else '#A0A000' if 'color=b' not in flags else '#000000'
+                    lines.append(f"""<circle cx="{rep.real}" cy="{rep.imag}" r="4" fill="{fill}" />""")
+
+    lines.append('</svg>')
+    return '\n'.join(lines)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--out_dir', type=str, required=True)
+    args = parser.parse_args()
+    out_dir = pathlib.Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    gen.write_file(out_dir / 'color-match.svg', color_code_matchable_svg())
+    gen.write_file(out_dir / 'd3-init-degenerate.svg', cultiv.make_inject_and_cultivate_circuit(dcolor=3, inject_style='degenerate', basis='Y').diagram('detslice-with-ops-svg', tick=range(15), rows=3))
+    gen.write_file(out_dir / 'd3-init-bell.svg', cultiv.make_inject_and_cultivate_circuit(dcolor=3, inject_style='bell', basis='Y').diagram('detslice-with-ops-svg', tick=range(9), rows=2))
+    gen.write_file(out_dir / 'd3-init-unitary.svg', cultiv.make_inject_and_cultivate_circuit(dcolor=3, inject_style='unitary', basis='Y').diagram('detslice-with-ops-svg', tick=range(15), rows=3))
+
+    chunk = cultiv.make_chunk_d3_double_cat_check()
+    chunk = chunk.with_edits(flows=[flow for flow in chunk.flows if 'Y' in (flow.start or flow.end).qubits.values() or (not flow.start and not flow.end)])
+    c = chunk.with_obs_flows_as_det_flows().to_closed_circuit()
+    gen.write_file(out_dir / 'cat-check-d3.svg', c.diagram('detslice-with-ops-svg', tick=range(1, 15), rows=2))
+
+    chunk = cultiv.make_chunk_d5_double_cat_check()
+    chunk = chunk.with_edits(flows=[flow for flow in chunk.flows if 'Y' in (flow.start or flow.end).qubits.values() or (not flow.start and not flow.end)])
+    c = chunk.with_obs_flows_as_det_flows().to_closed_circuit()
+    gen.write_file(out_dir / 'cat-check-d5.svg', c.diagram('detslice-with-ops-svg', tick=range(1, 21), rows=3))
+
+    dcolor = 7
+    dsurface = dcolor * 2 + 5
+    code0 = cultiv.make_color_code(dcolor).with_transformed_coords(lambda e: e * (1 + 1j))
+    code2 = cultiv.make_hybrid_color_surface_code(dcolor=dcolor, dsurface=dsurface, obs_location='right').with_transformed_coords(lambda e: e * (1 + 1j))
+
+    chunk1 = cultiv.make_color_code_to_growing_code_chunk(
+        start_code=cultiv.make_color_code(dcolor, obs_location='x-top-z-bottom-right'),
+        end_code=cultiv.make_hybrid_color_surface_code(dcolor=dcolor, dsurface=dsurface, obs_location='transition'),
+        obs_basis='Y')
+    code1 = gen.Patch([
+        *chunk1.end_patch().tiles,
+    ]).with_transformed_coords(lambda e: e * (1 + 1j))
+
+    code3 = cultiv.make_post_escape_matchable_code(dcolor=dcolor, dsurface=dsurface).with_transformed_coords(lambda e: e * (1 + 1j))
+    _, c_max = gen.min_max_complex(code3.data_set)
+
+    code0.write_svg(
+        out_dir / 'code-transitions.svg',
+        other=[code1, code2, code3],
+        title=[
+            f'Color Code (d={code0.find_distance(max_search_weight=3)})',
+            f'Growing Surface Code from Color Code (d={code0.find_distance(max_search_weight=3)})',
+            f'Grafted Color/Surface Code (d={code2.find_distance(max_search_weight=3)})',
+            f'Grafted Matchable Code (d={code3.find_distance(max_search_weight=2)})',
+        ],
+        opacity=1,
+        show_measure_qubits=True,
+        system_qubits=code3.used_set,
+        show_coords=False,
+        show_obs=False,
+        rows=1,
+        tile_color_func=cultiv.tile_rgb_color,
+    )
+
+    # Color code growth plot
+    pairs = gen.Patch([
+        tile
+        for tile in cultiv.make_growing_color_code_bell_pair_patch(5, 9)
+        if len(tile.data_set) == 2
+    ])
+    before = cultiv.make_color_code(5).stabilizers
+    after = cultiv.make_color_code(9).stabilizers
+    patch = gen.Patch([
+                          tile.with_edits(measure_qubit=None)
+                          for tile in pairs
+                          if len(tile.data_set) == 2
+                      ] + [
+                          tile
+                          for tile in after.tiles
+                          if tile.basis == 'Z'
+                          if tile.measure_qubit in before.measure_set or 'color=b' in tile.flags or 'color=g' in tile.flags
+                      ])
+    before.with_only_z_tiles().write_svg(
+        out_dir / 'color-code-growth.svg',
+        other=[patch, after.with_only_z_tiles()],
+        rows=1,
+        tile_color_func=lambda e: (1, 0, 1) if len(e.data_set) == 2 else cultiv.tile_rgb_color(e),
+        show_coords=False,
+        title=['before growth', 'extend with bell pairs', 'after next measurement cycle'],
+        system_qubits=after.data_set,
+    )
+
+    write_gap_plot(out_dir / 'circuit-gaps.svg')
+
+    code3a = cultiv.make_post_escape_matchable_code(dcolor=dcolor, dsurface=dsurface, desaturate=False).with_transformed_coords(lambda e: e * (1 + 1j))
+    code3b = cultiv.make_color_code_grown_into_surface_code_then_ablated_into_matchable_code_simple(dcolor=dcolor, dsurface=dsurface, desaturate=False).with_transformed_coords(lambda e: e * (1 + 1j))
+    code3c = cultiv.make_color_code_grown_into_surface_code_then_ablated_into_matchable_code_full_edges(dcolor=dcolor, dsurface=dsurface, desaturate=False).with_transformed_coords(lambda e: e * (1 + 1j))
+    code2.write_svg(
+        out_dir / 'code-transition-alternates.svg',
+        other=[code3b, code3c, code3a],
+        title=[
+            f'Unmatchable Color/Surface Code Hybrid (d={code2.find_distance(max_search_weight=3)})',
+            f'Hybrid → Matchable Subset (d={code3b.find_distance(max_search_weight=2)})',
+            f'Hybrid → Matchable Honeycomb Bulk (d={code3c.find_distance(max_search_weight=2)})',
+            f'Hybrid → Matchable Ancilla-Constrained Bulk (d={code3a.find_distance(max_search_weight=2)})',
+        ],
+        opacity=1,
+        show_measure_qubits=True,
+        system_qubits=code3.used_set,
+        show_coords=False,
+        show_obs=False,
+        rows=1,
+        tile_color_func=cultiv.tile_rgb_color,
+    )
+
+
+if __name__ == '__main__':
+    main()

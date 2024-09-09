@@ -1,0 +1,263 @@
+#!/usr/bin/env bash
+
+set -e
+cd "$( dirname "${BASH_SOURCE[0]}" )"
+cd "$(git rev-parse --show-toplevel)"
+
+mkdir assets/gen -p
+
+./tools/sinter_plot_echo.py \
+    --in assets/stats.csv \
+    --preprocess_stats_func "__import__('cultiv').split_by_gap_threshold(stats, gap_rounding=5)" \
+    --group_func "{'label': f'''d1={m.d1}, r1={m.r1}, p={m.p}''', 'marker': m.p, 'color': m.d1}" \
+    --xaxis "[log]Expected Attempts per Kept Shot" \
+    --yaxis "[log]Logical Error Rate (per Kept Shot)" \
+    --x_func "(stat.shots + 1) / (stat.shots - stat.discards + 2)" \
+    --title "End-to-End Cost of Magic State Cultivation" \
+    --subtitle "{common}" \
+    --filter_func "m.c == 'end2end-inplace-distillation'" \
+    --xmin 1e0 \
+    --xmax 1e4 \
+    --ymax 1 \
+    --ymin 1e-12 \
+    --fig_size 2048 1024 \
+    --dpi 200 \
+    --type error_rate \
+    --out assets/gen/end2end.png \
+    &
+
+./tools/sinter_plot_echo.py \
+    --in assets/stats.csv \
+    --title "Comparing Cultivation of T|+>, S|+>, and Z|+> States" \
+    --subtitle "c=inject[unitary]+cultivate, d1=3, g=css, noise=uniform, q=15, r=4" \
+    --type "error_rate" \
+    --x_func "(stat.shots + 1) / (stat.shots - stat.discards + 2)" \
+    --xmin 1 \
+    --xmax 100 \
+    --xaxis "[log]Expected Attempts per Kept Shot" \
+    --yaxis "[log]Logical Error Rate (per kept shot)" \
+    --group_func "{'sort': 'tsz'.index(decoder.split('_')[-1]), 'color': decoder.split('_')[-1], 'linestyle': decoder.split('_')[0][::-1], 'label': f'''gate={decoder.split('_')[-1].upper()}, sim={'stabilizer[twirl-T]' if decoder == 'twirl_intercept_t' else decoder.split('_')[0].replace('twirl', 'stabilizer').replace('vec', 'Vector')}'''}" \
+    --point_label_func "f'''p={m.p}''' * (decoder.split('_')[-1] == 't')" \
+    --ymax 1e-2 \
+    --ymin 1e-7 \
+    --fig_size 2048 1024 \
+    --dpi 200 \
+    --filter_func "'intercept' in decoder and 'vec' in decoder" \
+    --out assets/gen/t-vs-s.png \
+    &
+
+./tools/sinter_plot_echo.py \
+    --in assets/stats.csv \
+    --title "Comparing State Vector Simulation to Stabilizer Simulation of Cultivation" \
+    --subtitle "{common}" \
+    --type "error_rate" \
+    --x_func "(stat.shots + 1) / (stat.shots - stat.discards + 2)" \
+    --xmin 1 \
+    --xmax 100 \
+    --xaxis "[log]Expected Attempts per Kept Shot" \
+    --yaxis "[log]Logical Error Rate (per kept shot)" \
+    --group_func "{'label': f'''gate={m.b}, sim={m.sim}''', 'color': m.sim, 'linestyle': m.sim}" \
+    --point_label_func "f'''p={m.p}''' * (m.b == 'S' and m.sim == 'Vector')" \
+    --ymax 1e-2 \
+    --ymin 1e-7 \
+    --fig_size 2048 1024 \
+    --dpi 200 \
+    --preprocess_stats_func "__import__('cultiv').preprocess_intercepted_simulation_stats(stats)" \
+    --out assets/gen/vec-vs-stabilizer.png \
+    &
+
+./tools/sinter_plot_echo.py \
+    --in assets/emulated-historical-stats.csv \
+    --group_func "m.c" \
+    --ymax 1 \
+    --ymin 1e-15 \
+    --xaxis "[log]Expected Volume (qubit·rounds, including retries)" \
+    --y_func "stat.errors / (stat.shots - stat.discards)" \
+    --x_func "m.v if m.v is not None else (m.q * ((m.r or 0) + (m.r2 or 0)) * (stat.shots + 2) / (stat.shots - stat.discards + 1))" \
+    --plot_args_func "{'linestyle': '--' if m.state == 'Y' else ':' if m.state == 'CNOT' else '', 'markersize': 0 if m.state == 'Y' or m.state == 'CNOT' else 8, 'color': 'black' if 'This Work' in m.c else None}" \
+    --filter_func "m.p == 1e-3 and m.state in ['T', 'Y', 'T[d=3]', 'T[d=5]', 'CNOT'] and stat.errors > 0" \
+    --yaxis "[log]Error Rate per Kept State" \
+    --point_label_func "'ungrown\nd=3' if '[d=3]' in m.state else 'ungrown\nd=5' if '[d=5]' in m.state else ''" \
+    --title "Historical Estimates of the Cost of |T⟩ States" \
+    --subtitle "(noise=uniform, p=1e-3, g=css)" \
+    --fig_size 2048 2048 \
+    --dpi 200 \
+    --out assets/gen/historical-comparison.png \
+    &
+./tools/sinter_plot_echo.py \
+    --in assets/emulated-historical-stats.csv \
+    --group_func "{'color': m.p, 'marker': m.d1, 'label': f'''p={m.p}, d1={m.d1}, d2={m.d2}'''}" \
+    --ymax 1 \
+    --ymin 1e-15 \
+    --xaxis "[log]Expected Volume (qubit·rounds)"  \
+    --x_func "m.v"   \
+    --filter_func "m.p in [5e-4, 1e-3, 2e-3] and 'This Work' in m.c and m.state in ['T']" \
+    --yaxis "[log]Error Rate per Kept State" \
+    --title "Estimated Cost of Cultivation for Various Noise Strengths" \
+    --subtitle "d2=15, decoder=desaturation, g=css, noise=uniform, state=T" \
+    --fig_size 2048 1024 \
+    --dpi 200 \
+    --xmin 1 \
+    --xmax 1e9 \
+    --type error_rate \
+    --out assets/gen/future-comparison.png \
+    &
+
+./tools/sinter_plot_echo.py \
+    --in assets/stats.csv \
+    --preprocess_stats_func "__import__('cultiv').split_by_gap(stats, gap_rounding=5)" \
+    --group_func "f'''c={m.c.replace('idle-matchable-code', 'grafted-matchable').replace('-memory', '')}, ''' + (f'''d1={m.d1}, d2={m.d2}''' if m.d1 else f'''d={m.d2}''') + f''', r={m.r}'''" \
+    --xaxis "Complementary Gap Cutoff (dB) (rounded to nearest 5)" \
+    --yaxis "[log]Logical Error Rate (per shot)" \
+    --x_func "m.gap" \
+    --title "Gap Cutoff vs Logical Error Rate when Idling" \
+    --subtitle "{common}" \
+    --filter_func "m.d2 in [11, 15] and m.p == 0.001 and decoder == 'pymatching-gap' and m.b == 'Y' and m.g == 'css' and stat.errors > 100" \
+    --xmin 0 \
+    --xmax 100 \
+    --ymax 1 \
+    --ymin 1e-10 \
+    --fig_size 2048 1024 \
+    --dpi 200 \
+    --out assets/gen/gap-calibration.png \
+    &
+
+./tools/sinter_plot_echo.py \
+    --in assets/stats.csv \
+    --preprocess_stats_func "__import__('cultiv').split_by_gap(stats, gap_rounding=5)" \
+    --group_func "{'color': m.d1, 'marker': m.d2, 'label': f'''c={m.c.replace('idle-matchable-code', 'grafted-matchable').replace('-memory', '')}, ''' + (f'''d1={m.d1}, d2={m.d2}''' if m.d1 else f'''d={m.d2}''') + f''', r={m.r}'''}" \
+    --xaxis "Complementary Gap (dB) (rounded to nearest 5)" \
+    --yaxis "[log]Frequency (per shot)" \
+    --x_func "m.gap"  \
+    --subtitle "b=Y, decoder=pymatching-gap, g=css, noise=uniform, p=0.001" \
+    --xmin 0 \
+    --xmax 400 \
+    --ymax 1e-0 \
+    --ymin 1e-8 \
+    --fig_size 2048 1024 \
+    --dpi 200 \
+    --filter_func "m.d2 in [11, 15] and m.p == 0.001 and decoder == 'pymatching-gap' and m.b == 'Y' and m.g == 'css'" \
+    --y_func "sinter.fit_binomial(num_hits=stat.shots, num_shots=m.src_shots, max_likelihood_factor=1000)" \
+    --title "Gap Distribution when Idling" \
+    --out assets/gen/gap-distribution.png \
+    &
+
+./tools/sinter_plot_echo.py \
+    --in assets/stats.csv \
+    --preprocess_stats_func "__import__('cultiv').split_by_gap_threshold(stats, gap_rounding=5, keep_zero=True)" \
+    --group_func "{'color': m.d1, 'marker': m.d2, 'label': f'''c={m.c.replace('idle-matchable-code', 'grafted-matchable').replace('-memory', '')}, ''' + (f'''d1={m.d1}, d2={m.d2}''' if m.d1 else f'''d={m.d2}''') + f''', r={m.r}'''}" \
+    --x_func "((stat.shots + 1) / (stat.shots - stat.discards + 2) - 1) / m.r" \
+    --xaxis "[log]Expected Retries per Kept Round" \
+    --yaxis "[log]Logical Error Rate (per Kept Round)" \
+    --subtitle "{common}" \
+    --xmin 1e-9 \
+    --xmax 1 \
+    --ymax 1e-0 \
+    --ymin 1e-12 \
+    --fig_size 2048 1024 \
+    --dpi 200 \
+    --title "Error Rate vs Expected Retry Curves when Idling" \
+    --filter_func "m.d2 in [11, 15] and decoder == 'pymatching-gap'" \
+    --out assets/gen/gap-gap.png \
+    --type "error_rate" \
+    --failure_units_per_shot_func "m.r" \
+    --failure_unit_name "round" \
+    &
+
+./tools/sinter_plot_echo.py \
+    --in assets/emulated-enumeration-stats.csv \
+    --x_func "(stat.shots + 1) / (stat.shots - stat.discards + 2)" \
+    --type error_rate \
+    --group_func "f'''d1={m.d} c=inject[{m.style}]+cultivate'''.replace('degenerate', 'teleport')" \
+    --xmin 1e0 \
+    --xmax 1e2 \
+    --ymax 1e-0 \
+    --ymin 1e-15 \
+    --xaxis "[log]Expected Attempts per Kept Shot" \
+    --yaxis "Error Rate (per Kept Shot)" \
+    --title "Cost of Injection+Cultivation without the Escape Stage by Brute Force Enumeration" \
+    --subtitle "(b=Y, g=css, noise=uniform, max_enumeration_distance=5)" \
+    --fig_size 2048 1024 \
+    --dpi 200 \
+    --point_label_func "f'''p={round(m.p / 10**math.floor(math.log10(m.p * 1.01)))}e{math.floor(math.log10(m.p * 1.01))}''' if 'unitary' in m.style else ''" \
+    --out "assets/gen/inject-only-enumerated.png" \
+    &
+./tools/sinter_plot_echo.py \
+    --in assets/stats.csv \
+    --preprocess_stats_func "__import__('cultiv').split_by_gap_threshold(stats, gap_rounding=5)" \
+    --type error_rate \
+    --group_func "f'''d1={m.d1} c={m.c}'''" \
+    --x_func "(stat.shots + 1) / (stat.shots - stat.discards + 2)" \
+    --title "Cost of Injection+Cultivation without the Escape Stage by Monte Carlo Sampling" \
+    --subtitle "({common})" \
+    --point_label_func "f'''p={round(m.p / 10**math.floor(math.log10(m.p * 1.01)))}e{math.floor(math.log10(m.p * 1.01))}''' if 'unitary' in m.c else ''" \
+    --filter_func "']+cultivate' in m.c and decoder == 'perfectionist' and m.noise == 'uniform' and m.b == 'Y'" \
+    --fig_size 2048 1024 \
+    --dpi 200 \
+    --xaxis "[log]Expected Attempts per Kept Shot" \
+    --yaxis "[log]Error Rate (per Kept Shot)" \
+    --xmin 1e0 \
+    --xmax 1e2 \
+    --ymax 1e-0 \
+    --ymin 1e-15 \
+    --out assets/gen/inject-only-sampled.png \
+    &
+
+./tools/sinter_plot_echo.py \
+    --in assets/stats.csv \
+    --preprocess_stats_func "__import__('cultiv').split_by_gap_threshold(stats, gap_rounding=5, keep_zero=True)" \
+    --group_func "f'''d1={m.d1}, d2={m.d2}'''" \
+    --x_func "(stat.shots + 1) / (stat.shots - stat.discards + 2)" \
+    --xmin 1 \
+    --xmax 100 \
+    --ymax 1 \
+    --ymin 1e-6 \
+    --title "Difficulty of Decoding Color Code Growth" \
+    --subtitle "b=Y, c=color-code-grow, decoder=chromobius-gap, g=css, noise=uniform, p=0.001" \
+    --xaxis "[log]Expected Attempts per Kept Shot" \
+    --yaxis "[log]Logical Error Rate (per Kept Shot)" \
+    --filter_func "decoder == 'chromobius-gap'" \
+    --type "error_rate" \
+    --fig_size 2048 1024 \
+    --dpi 200 \
+    --out assets/gen/color-code-growth-difficulty.png \
+    &
+
+./tools/sinter_plot_echo.py \
+    --in assets/stats.csv\
+    --x_func "m.d2"\
+    --xaxis "Distance (patch diameter and rounds per step)"\
+    --xmin 0\
+    --xmax 31\
+    --ymin 1e-15\
+    --ymax 1\
+    --group_func "f'''b={m.b}'''"\
+    --filter_func "m.c == 'surface-code-cnot' and 'corr' in decoder" \
+    --title "Benchmarking the Surface Code Lattice Surgery CNOT" \
+    --subtitle "{common}" \
+    --out assets/gen/benchmark-cnot.png \
+    --fig_size 2048 1024 \
+    --dpi 200 \
+    --line_fits \
+    &
+
+./tools/regen_plots \
+    --out assets/gen \
+    &
+
+PYTHONPATH=src python src/cultiv/make_lifetime_plot.py \
+    --out assets/gen/cultivation-lifetime.png \
+    &
+
+wait
+
+if (which inkscape > /dev/null); then
+  for filename in assets/gen/*.svg; do
+    out_path="${filename%.svg}.png"
+    inkscape "${filename}" -o "${out_path}" -w 4096
+    abs_path=$(realpath "${out_path}")
+    echo Converted "file://${abs_path}"
+  done
+else
+  echo "Warning: 'inkscape' not in PATH. Skipping conversion of SVG images to PNG images."
+fi

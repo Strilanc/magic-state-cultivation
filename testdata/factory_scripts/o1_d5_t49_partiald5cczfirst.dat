@@ -1,0 +1,77 @@
+PROMISE distance=5
+PROMISE assume_checks_fail_with_certainty=True
+PROMISE num_t_used=49
+PROMISE max_storage=7
+
+ALLOC XXXX
+T -__Z_
+T +_ZZ_
+T +Z_Z_
+T -ZZZ_
+
+SWAP 2 3
+T -__ZZ
+T +_ZZZ
+T +Z_ZZ
+T -ZZZZ
+POSTSELECT X3
+SWAP 2 3
+T +__ZZ
+T -_ZZZ
+T -Z_ZZ
+T +ZZZZ
+POSTSELECT X3
+
+SWAP 2 3
+T -__ZZ
+T +_ZZZ
+T +Z_ZZ
+T -ZZZZ
+POSTSELECT X3
+SWAP 2 3
+T +__ZZ
+T -_ZZZ
+T -Z_ZZ
+T +ZZZZ
+POSTSELECT X3
+
+RELEASE X3
+
+ALLOC ___XXXX
+T +_ZZ_ZZZ
+T +_ZZ__ZZ
+T +_ZZ_Z_Z
+T +_ZZ_ZZ_
+T +_ZZ_Z__
+T +_ZZ___Z
+T +_ZZ__Z_
+T +___ZZZZ
+T +___Z_ZZ
+T +___ZZ_Z
+T +___ZZZ_
+T +___ZZ__
+T +___Z__Z
+T +___Z_Z_
+T +___Z___
+POSTSELECT_RELEASE ___XXXX
+
+ALLOC ____XXX
+T -ZZZ_ZZZ
+T -ZZZ__ZZ
+T -ZZZ_Z_Z
+T -ZZZ_ZZ_
+T -ZZZ_Z__
+T -ZZZ___Z
+T -ZZZ__Z_
+T +Z_Z_ZZZ
+T +Z_Z__ZZ
+T +Z_Z_Z_Z
+T +Z_Z_ZZ_
+T +Z_Z_Z__
+T +Z_Z___Z
+T +Z_Z__Z_
+POSTSELECT_RELEASE ____XXX
+
+POSTSELECT_RELEASE XX
+
+OUTPUT_RELEASE -T2

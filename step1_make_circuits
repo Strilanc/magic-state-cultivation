@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+
+set -e
+cd "$( dirname "${BASH_SOURCE[0]}" )"
+cd "$(git rev-parse --show-toplevel)"
+
+parallel -q --ungroup ./tools/make_circuits \
+    --circuit_type "{1}" \
+    --noise_strength "{2}" \
+    --basis Y \
+    --gateset css \
+    --out_dir out/circuits/for_perfectionist_decoding \
+    --d1 "{3}" \
+    --skip_if "circuit_type != 'inject[unitary]+cultivate' and d1 != 3" \
+    ::: "inject[bell]+cultivate" "inject[teleport]+cultivate" "inject[unitary]+cultivate" \
+    ::: 5e-4 1e-3 2e-3 \
+    ::: 3 5 \
+    &
+
+parallel -q --ungroup ./tools/make_circuits \
+    --circuit_type "{1}" \
+    --noise_strength "{2}" \
+    --gateset css \
+    --out_dir out/circuits/for_desaturated_decoding_3 \
+    --basis Y \
+    --d1 "{3}" \
+    --d2 15 \
+    --r1 "d1" \
+    --r2 "5" \
+    ::: "end2end-inplace-distillation" \
+    ::: 1e-3 2e-3 5e-4 \
+    ::: 3 \
+    &
+
+parallel -q --ungroup ./tools/make_circuits \
+    --circuit_type "{1}" \
+    --noise_strength "{2}" \
+    --gateset css \
+    --out_dir out/circuits/for_desaturated_decoding_5 \
+    --basis Y \
+    --d1 "{3}" \
+    --d2 15 \
+    --r1 "d1" \
+    --r2 "5" \
+    ::: "end2end-inplace-distillation" \
+    ::: 1e-3 2e-3 5e-4 \
+    ::: 5 \
+    &
+
+parallel -q --ungroup ./tools/make_circuits \
+    --circuit_type "inject[unitary]+cultivate" \
+    --noise_strength "{1}" \
+    --gateset css \
+    --out_dir out/circuits/for_intercept_sampling \
+    --d1 3 \
+    --b Y \
+    ::: 1e-3 2e-3 3e-3 5e-3 7e-3 1e-2 \
+    &
+
+parallel -q --ungroup ./tools/make_circuits \
+    --circuit_type "idle-matchable-code" \
+    --gateset css \
+    --noise_strength 1e-3 \
+    --out_dir out/circuits/for_matching \
+    --basis Y \
+    --d1 "{1}" \
+    --d2 "{2}" \
+    --r2 "d2*3" \
+    --skip_if "d2 < d1*2" \
+    ::: 3 5 \
+    ::: 11 15 \
+    &
+
+parallel -q --ungroup ./tools/make_circuits \
+    --circuit_type surface-code-memory \
+    --gateset css \
+    --noise_strength 1e-3 \
+    --out_dir out/circuits/for_matching \
+    --basis Y \
+    --d2 "{1}" \
+    --r2 "d2*3" \
+    ::: 11 15 \
+    &
+
+./tools/make_circuits \
+    --circuit_type escape-to-big-color-code \
+    --basis Y \
+    --gateset css \
+    --noise_strength 1e-3 \
+    --out_dir out/circuits/for_color_gap_decoding \
+    --d1 3 5 7 \
+    --d2 "d1*3" \
+    --r2 10 \
+    &
+
+parallel -q --ungroup ./tools/make_circuits \
+    --circuit_type surface-code-cnot \
+    --basis "{2}" \
+    --gateset css \
+    --noise_strength 1e-3 \
+    --out_dir out/circuits/for_correlated_matching \
+    --d2 "{1}" \
+    ::: 3 5 7 9 11 13 15 17 19 21 23 25 \
+    ::: X Z \
+    &
+
+wait

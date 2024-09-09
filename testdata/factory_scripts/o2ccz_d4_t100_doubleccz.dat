@@ -1,0 +1,144 @@
+PROMISE distance=4
+PROMISE num_t_used = 100
+PROMISE num_t_outputs = 6
+PROMISE assume_checks_fail_with_certainty=True
+ALLOC XXXXXXXX___
+
+ALLOC ________XXX
+T ZZZZ____Z__
+T ZZZZ_____Z_
+T ZZZZ______Z
+T ZZZZ____ZZ_
+T ZZZZ_____ZZ
+T ZZZZ____Z_Z
+T ZZZZ____ZZZ
+T ____ZZZZZ__
+T ____ZZZZ_Z_
+T ____ZZZZ__Z
+T ____ZZZZZZ_
+T ____ZZZZ_ZZ
+T ____ZZZZZ_Z
+T ____ZZZZZZZ
+POSTSELECT_RELEASE ________XXX
+
+ALLOC ________XXX
+T ZZ______Z__
+T ZZ_______Z_
+T ZZ________Z
+T ZZ______ZZ_
+T ZZ_______ZZ
+T ZZ______Z_Z
+T ZZ______ZZZ
+T ____ZZ__Z__
+T ____ZZ___Z_
+T ____ZZ____Z
+T ____ZZ__ZZ_
+T ____ZZ___ZZ
+T ____ZZ__Z_Z
+T ____ZZ__ZZZ
+POSTSELECT_RELEASE ________XXX
+
+ALLOC ________XXX
+T Z_Z_____Z__
+T Z_Z______Z_
+T Z_Z_______Z
+T Z_Z_____ZZ_
+T Z_Z______ZZ
+T Z_Z_____Z_Z
+T Z_Z_____ZZZ
+T ____Z_Z_Z__
+T ____Z_Z__Z_
+T ____Z_Z___Z
+T ____Z_Z_ZZ_
+T ____Z_Z__ZZ
+T ____Z_Z_Z_Z
+T ____Z_Z_ZZZ
+POSTSELECT_RELEASE ________XXX
+
+ALLOC ________XXX
+T Z__Z____Z__
+T Z__Z_____Z_
+T Z__Z______Z
+T Z__Z____ZZ_
+T Z__Z_____ZZ
+T Z__Z____Z_Z
+T Z__Z____ZZZ
+T ____Z__ZZ__
+T ____Z__Z_Z_
+T ____Z__Z__Z
+T ____Z__ZZZ_
+T ____Z__Z_ZZ
+T ____Z__ZZ_Z
+T ____Z__ZZZZ
+POSTSELECT_RELEASE ________XXX
+
+ALLOC ________XXX
+T ZZZ_____Z__
+T ZZZ______Z_
+T ZZZ_______Z
+T ZZZ_____ZZ_
+T ZZZ______ZZ
+T ZZZ_____Z_Z
+T ZZZ_____ZZZ
+T ____ZZZ_Z__
+T ____ZZZ__Z_
+T ____ZZZ___Z
+T ____ZZZ_ZZ_
+T ____ZZZ__ZZ
+T ____ZZZ_Z_Z
+T ____ZZZ_ZZZ
+POSTSELECT_RELEASE ________XXX
+
+ALLOC ________XXX
+T ZZ_Z____Z__
+T ZZ_Z_____Z_
+T ZZ_Z______Z
+T ZZ_Z____ZZ_
+T ZZ_Z_____ZZ
+T ZZ_Z____Z_Z
+T ZZ_Z____ZZZ
+T ____ZZ_ZZ__
+T ____ZZ_Z_Z_
+T ____ZZ_Z__Z
+T ____ZZ_ZZZ_
+T ____ZZ_Z_ZZ
+T ____ZZ_ZZ_Z
+T ____ZZ_ZZZZ
+POSTSELECT_RELEASE ________XXX
+
+ALLOC ________XXX
+T Z_ZZ____Z__
+T Z_ZZ_____Z_
+T Z_ZZ______Z
+T Z_ZZ____ZZ_
+T Z_ZZ_____ZZ
+T Z_ZZ____Z_Z
+T Z_ZZ____ZZZ
+T ____Z_ZZZ__
+T ____Z_ZZ_Z_
+T ____Z_ZZ__Z
+T ____Z_ZZZZ_
+T ____Z_ZZ_ZZ
+T ____Z_ZZZ_Z
+T ____Z_ZZZZZ
+POSTSELECT_RELEASE ________XXX
+POSTSELECT_RELEASE T0
+POSTSELECT_RELEASE T4
+
+# Verify CCZ
+MAGIC_PERFECT_T _ZZZ_______
+MAGIC_PERFECT_T _ZZ________
+MAGIC_PERFECT_T __ZZ_______
+MAGIC_PERFECT_T _Z_Z_______
+OUTPUT_RELEASE -T1
+OUTPUT_RELEASE -T2
+OUTPUT_RELEASE -T3
+
+# Verify CCZ
+MAGIC_PERFECT_T _____ZZZ___
+MAGIC_PERFECT_T _____ZZ____
+MAGIC_PERFECT_T ______ZZ___
+MAGIC_PERFECT_T _____Z_Z___
+OUTPUT_RELEASE -T5
+OUTPUT_RELEASE -T6
+OUTPUT_RELEASE -T7

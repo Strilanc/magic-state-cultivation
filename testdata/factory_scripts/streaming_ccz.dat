@@ -1,0 +1,491 @@
+# Streaming CCZ distillation, with non-increasing size until the number of basic steps exceeds (1/p)^(3/2)
+
+PROMISE distance=6
+PROMISE assume_checks_fail_with_certainty=True
+PROMISE max_storage=10
+
+# L2 distill step 1 {
+    # stream-crunch error on third qubit of a CCZ
+    ALLOC XXXX
+        T -__Z_
+        T +_ZZ_
+        T +Z_Z_
+        T -ZZZ_
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+    RELEASE X3
+    FLIP __X
+    SWAP 1 2
+    SWAP 0 4
+    SWAP 1 5
+    SWAP 2 6
+# } L2 distill step 1
+
+# L2 distill step 2 {
+    # stream-crunch error on third qubit of a CCZ
+    ALLOC XXXX
+        T -__Z_
+        T +_ZZ_
+        T +Z_Z_
+        T -ZZZ_
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+    RELEASE X3
+    FLIP __X
+    SWAP 1 2
+    # measure Z0 Z1
+    CX 4 0 5 1
+    CX 1 5
+    MAGIC_PERFECT_CCZ 1 4 6  # actually a classically controlled CZ
+    MAGIC_PERFECT_CCZ 0 5 6  # actually a classically controlled CZ
+    CX 0 4
+    CX 2 6
+    RELEASE X0
+    RELEASE X1
+    POSTSELECT_RELEASE X2
+# } L2 distill step 2
+
+# L2 distill step  3 {
+    # stream-crunch error on third qubit of a CCZ
+    ALLOC XXXX
+        T -__Z_
+        T +_ZZ_
+        T +Z_Z_
+        T -ZZZ_
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+    RELEASE X3
+    FLIP __X
+    SWAP 1 2
+    # measure Z0 Z1
+    CX 4 0 5 1
+    CX 1 5
+    MAGIC_PERFECT_CCZ 1 4 6  # actually a classically controlled CZ
+    MAGIC_PERFECT_CCZ 0 5 6  # actually a classically controlled CZ
+    CX 0 4
+    CX 2 6
+    RELEASE X0
+    RELEASE X1
+    POSTSELECT_RELEASE X2
+# } L2 distill step 3
+
+SWAP 4 6
+SWAP 4 7
+SWAP 5 8
+SWAP 6 9
+
+# L2 distill step 1 {
+    # stream-crunch error on third qubit of a CCZ
+    ALLOC XXXX
+        T -__Z_
+        T +_ZZ_
+        T +Z_Z_
+        T -ZZZ_
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+    RELEASE X3
+    FLIP __X
+    SWAP 1 2
+    SWAP 0 4
+    SWAP 1 5
+    SWAP 2 6
+# } L2 distill step 1
+
+# L2 distill step 2 {
+    # stream-crunch error on third qubit of a CCZ
+    ALLOC XXXX
+        T -__Z_
+        T +_ZZ_
+        T +Z_Z_
+        T -ZZZ_
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+    RELEASE X3
+    FLIP __X
+    SWAP 1 2
+    # measure Z0 Z1
+    CX 4 0 5 1
+    CX 1 5
+    MAGIC_PERFECT_CCZ 1 4 6  # actually a classically controlled CZ
+    MAGIC_PERFECT_CCZ 0 5 6  # actually a classically controlled CZ
+    CX 0 4
+    CX 2 6
+    RELEASE X0
+    RELEASE X1
+    POSTSELECT_RELEASE X2
+# } L2 distill step 2
+
+# L2 distill step  3 {
+    # stream-crunch error on third qubit of a CCZ
+    ALLOC XXXX
+        T -__Z_
+        T +_ZZ_
+        T +Z_Z_
+        T -ZZZ_
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+    RELEASE X3
+    FLIP __X
+    SWAP 1 2
+    # measure Z0 Z1
+    CX 4 0 5 1
+    CX 1 5
+    MAGIC_PERFECT_CCZ 1 4 6  # actually a classically controlled CZ
+    MAGIC_PERFECT_CCZ 0 5 6  # actually a classically controlled CZ
+    CX 0 4
+    CX 2 6
+    RELEASE X0
+    RELEASE X1
+    POSTSELECT_RELEASE X2
+# } L2 distill step 3
+
+SWAP 4 6
+CX 7 4 8 5
+CX 5 8
+MAGIC_PERFECT_CCZ 5 7 9  # actually a classically controlled CZ
+MAGIC_PERFECT_CCZ 4 8 9  # actually a classically controlled CZ
+CX 4 7
+CX 6 9
+RELEASE X4
+RELEASE X5
+POSTSELECT_RELEASE X6
+
+
+# L2 distill step 1 {
+    # stream-crunch error on third qubit of a CCZ
+    ALLOC XXXX
+        T -__Z_
+        T +_ZZ_
+        T +Z_Z_
+        T -ZZZ_
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+    RELEASE X3
+    FLIP __X
+    SWAP 1 2
+    SWAP 0 4
+    SWAP 1 5
+    SWAP 2 6
+# } L2 distill step 1
+
+# L2 distill step 2 {
+    # stream-crunch error on third qubit of a CCZ
+    ALLOC XXXX
+        T -__Z_
+        T +_ZZ_
+        T +Z_Z_
+        T -ZZZ_
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+    RELEASE X3
+    FLIP __X
+    SWAP 1 2
+    # measure Z0 Z1
+    CX 4 0 5 1
+    CX 1 5
+    MAGIC_PERFECT_CCZ 1 4 6  # actually a classically controlled CZ
+    MAGIC_PERFECT_CCZ 0 5 6  # actually a classically controlled CZ
+    CX 0 4
+    CX 2 6
+    RELEASE X0
+    RELEASE X1
+    POSTSELECT_RELEASE X2
+# } L2 distill step 2
+
+# L2 distill step  3 {
+    # stream-crunch error on third qubit of a CCZ
+    ALLOC XXXX
+        T -__Z_
+        T +_ZZ_
+        T +Z_Z_
+        T -ZZZ_
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T +__ZZ
+        T -_ZZZ
+        T -Z_ZZ
+        T +ZZZZ
+        POSTSELECT X3
+        SWAP 2 3
+        T -__ZZ
+        T +_ZZZ
+        T +Z_ZZ
+        T -ZZZZ
+        POSTSELECT X3
+    RELEASE X3
+    FLIP __X
+    SWAP 1 2
+    # measure Z0 Z1
+    CX 4 0 5 1
+    CX 1 5
+    MAGIC_PERFECT_CCZ 1 4 6  # actually a classically controlled CZ
+    MAGIC_PERFECT_CCZ 0 5 6  # actually a classically controlled CZ
+    CX 0 4
+    CX 2 6
+    RELEASE X0
+    RELEASE X1
+    POSTSELECT_RELEASE X2
+# } L2 distill step 3
+
+SWAP 4 6
+CX 7 4 8 5
+CX 5 8
+MAGIC_PERFECT_CCZ 5 7 9  # actually a classically controlled CZ
+MAGIC_PERFECT_CCZ 4 8 9  # actually a classically controlled CZ
+CX 4 7
+CX 6 9
+RELEASE X4
+RELEASE X5
+POSTSELECT_RELEASE X6
+
+
+
+# do perfect analysis of the state for Z errors on each qubit
+MAGIC_PERFECT_CCZ 7 8 9
+MAGIC_PERFECT_T -Z7
+MAGIC_PERFECT_T -Z8
+MAGIC_PERFECT_T -Z9
+OUTPUT_RELEASE -T7
+OUTPUT_RELEASE -T8
+OUTPUT_RELEASE -T9

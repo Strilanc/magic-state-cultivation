@@ -1,0 +1,38 @@
+#!/usr/bin/env python3
+
+import argparse
+import pathlib
+import sys
+
+src_path = pathlib.Path(__file__).parent.parent / 'src'
+assert src_path.exists()
+sys.path.append(str(src_path))
+
+from cultiv import make_color_code, tile_rgb_color
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--d', type=int)
+    parser.add_argument('--out', type=str, default=None)
+    args = parser.parse_args()
+
+    if args.out is not None:
+        out = pathlib.Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        out = sys.stdout
+    if args.code == "color":
+        code = inplace_distill.make_color_code(base_width=args.d)
+        tile_color_func = inplace_distill.tile_rgb_color
+    elif args.code == "surface":
+        code = inplace_distill.make_surface_code(args.d, args.d).with_transformed_coords(lambda e: e * (1 + 1j))
+        tile_color_func = None
+    else:
+        raise NotImplementedError(f'{args.code=}')
+
+    code.stabilizers.write_svg(out, tile_color_func=tile_color_func)
+
+
+if __name__ == '__main__':
+    main()

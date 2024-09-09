@@ -1,0 +1,67 @@
+PROMISE distance=5
+PROMISE assume_checks_fail_with_certainty=True
+
+ALLOC __XXXX
+T __ZZZZ
+T __Z_ZZ
+T __ZZ_Z
+T __ZZZ_
+T __ZZ__
+T __Z_Z_
+T __Z__Z
+POSTSELECT_RELEASE -T2
+
+ALLOC __X___
+T __ZZZZ
+T __Z_ZZ
+T __ZZ_Z
+T __ZZZ_
+T __ZZ__
+T __Z_Z_
+T __Z__Z
+POSTSELECT_RELEASE ___XXX
+
+ALLOC _X_XXX
+T _Z_ZZZ
+T _Z__ZZ
+T _Z_Z_Z
+T _Z_ZZ_
+T _Z_Z__
+T _Z__Z_
+T _Z___Z
+
+ALLOC X_____
+T Z__ZZZ
+T Z___ZZ
+T Z__Z_Z
+T Z__ZZ_
+T Z__Z__
+T Z___Z_
+T Z____Z
+POSTSELECT_RELEASE ___XXX
+
+ALLOC T3 T4 T5
+T ZZ_Z__
+T ZZ__Z_
+T ZZ___Z
+T Z_ZZ__
+T Z_Z_Z_
+T Z_Z__Z
+T _ZZZ__
+T _ZZ_Z_
+T _ZZ__Z
+CX 4 3 5 3
+POSTSELECT_RELEASE ____XX
+ALLOC ____X_
+
+T _ZZZZ_
+T Z_ZZZ_
+T ZZ_ZZ_
+T ___ZZ_
+T __Z_Z_
+T _Z__Z_
+T Z___Z_
+T ZZZ_Z_
+CX 1 0 2 0
+POSTSELECT_RELEASE _XXXX_
+OUTPUT_RELEASE T0

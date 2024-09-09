@@ -1,0 +1,361 @@
+#!/usr/bin/env python3
+
+import argparse
+import collections
+import math
+import sys
+from typing import Optional, List
+
+import matplotlib.pyplot as plt
+import numpy as np
+import sinter
+import stim
+
+
+class Edge:
+    def __init__(self, a: int, b: Optional[int], mask: int):
+        self.a = a
+        self.b = b
+        self.mask = mask
+        assert b is None or a < b, f'{self}'
+
+    def __lt__(self, other):
+        return (self.a, -1 if self.b is None else self.b) < (other.a, -1 if other.b is None else other.b)
+
+    def __eq__(self, other):
+        return self.a == other.a and self.b == other.b
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __hash__(self):
+        return hash((self.a, self.b))
+
+    def __repr__(self):
+        return f'Edge(a={self.a!r}, b={self.b!r}, mask={self.mask!r})'
+
+
+def rgb_grad(p: float) -> str:
+    r, g, b, _ = plt.get_cmap('plasma')(1 - p, bytes=True)
+    r = hex(r)[2:].rjust(2, '0')
+    g = hex(g)[2:].rjust(2, '0')
+    b = hex(b)[2:].rjust(2, '0')
+    return '#' + r + g + b
+
+
+def _targets_to_edge_no_separator(targets: List[stim.DemTarget]) -> Edge | None:
+    flipped = 0
+    pair = []
+    for t in targets:
+        if t.is_logical_observable_id():
+            flipped ^= 1 << t.val
+        else:
+            assert t.is_relative_detector_id()
+            pair.append(t.val)
+    if not (1 <= len(pair) <= 2):
+        return None
+    if len(pair) == 1:
+        pair.append(None)
+    else:
+        pair = sorted(pair)
+    return Edge(pair[0], pair[1], flipped)
+
+
+def targets_to_edges(targets: List[stim.DemTarget]) -> List[Edge]:
+    edges = []
+    start = 0
+    while start < len(targets):
+        end = start + 1
+        while end < len(targets) and not targets[end].is_separator():
+            end += 1
+        edge = _targets_to_edge_no_separator(targets[start:end])
+        if edge is not None:
+            edges.append(edge)
+        start = end + 1
+    return edges
+
+
+def make_error_to_edges_list(dem: stim.DetectorErrorModel) -> List[List[Edge]]:
+    out = []
+    for inst in dem.flattened():
+        if inst.type == 'error':
+            out.append(targets_to_edges(inst.targets_copy()))
+    return out
+
+
+def draw_histogram(
+        *,
+        base_x: int,
+        base_y: int,
+        total_width: int,
+        total_height: int,
+        out_lines: list[str],
+        hits: collections.Counter,
+        stat: sinter.AnonTaskStats,
+        x_label: str,
+        y_label: str,
+        title: str,
+):
+    bucket_max_val = max(hits.values())
+    max_hit = max(hits.values(), default=0)
+    if max_hit > 100:
+        num_per_bucket = (max_hit + 49) // 50
+        num_buckets = 50
+    else:
+        num_per_bucket = 1
+        num_buckets = max(max_hit + 1, 2)
+    max_hit = num_buckets * num_per_bucket
+    bucket_width = total_width / num_buckets
+
+    bucket_hits = [0] * num_buckets
+    for e, h in hits.items():
+        bucket_hits[int(h // num_per_bucket)] += 1
+    bucket_rates = [h for h in bucket_hits]
+
+    min_bucket_rate = 1
+    actual_max_bucket_rate = max(10 * min_bucket_rate, max(bucket_rates, default=0))
+    max_bucket_rate = 10**math.ceil(math.log10(actual_max_bucket_rate))
+    if max_bucket_rate >= actual_max_bucket_rate * 10:
+        max_bucket_rate /= 10
+
+    def compute_bucket_height(bucket_rate: int) -> float:
+        if bucket_rate < min_bucket_rate:
+            return 0
+        bottom = np.log(min_bucket_rate)
+        top = np.log(max_bucket_rate)
+        actual = np.log(bucket_rate)
+        actual -= bottom
+        actual /= top - bottom
+        actual *= total_height
+        return actual
+
+    for k in range(num_buckets):
+        c = ((k + 0.5) / num_buckets * (max_hit + 1) + 1) / (max_hit + 1)
+        x = base_x + (k + 0.5)*bucket_width
+        out_lines.append(f'<path d="M {x} {base_y - compute_bucket_height(bucket_rates[k])} L {x} {base_y}" fill="none" stroke="{rgb_grad(c)}" stroke-width="{bucket_width}" />')
+        rgb_grad(c)
+    out_lines.append('<text'
+        f' x="{base_x}"'
+        f' y="{base_y + 1}"'
+        ' fill="black"'
+        ' font-size="6"'
+        ' text-anchor="middle"'
+        ' dominant-baseline="hanging"'
+        '>0</text>')
+    out_lines.append('<text'
+        f' x="{base_x + total_width}"'
+        f' y="{base_y + 1}"'
+        ' fill="black"'
+        ' font-size="6"'
+        ' text-anchor="middle"'
+        ' dominant-baseline="hanging"'
+        f'>{max_hit}</text>')
+    out_lines.append('<text'
+        f' x="{base_x + total_width / 2}"'
+        f' y="{base_y + 1}"'
+        ' fill="black"'
+        ' font-size="6"'
+        ' text-anchor="middle"'
+        ' dominant-baseline="hanging"'
+        f'>{max_hit // 2}</text>')
+    out_lines.append('<text'
+        f' x="{base_x + total_width/2}"'
+        f' y="{base_y + 6}"'
+        ' fill="black"'
+        ' font-size="6"'
+        ' text-anchor="middle"'
+        ' dominant-baseline="hanging"'
+        f'>{x_label}</text>')
+    out_lines.append('<text'
+        f' x="{base_x + total_width/2}"'
+        f' y="{base_y - total_height - 4}"'
+        ' fill="black"'
+        ' font-size="6"'
+        ' text-anchor="middle"'
+        ' dominant-baseline="bottom"'
+        f'>{title}</text>')
+    out_lines.append('<text'
+        f' x="{base_x - 2}"'
+        f' y="{base_y - total_height / 2}"'
+        ' fill="black"'
+        ' font-size="6"'
+        ' text-anchor="end"'
+        ' dominant-baseline="middle"'
+        f'>{y_label}</text>')
+    out_lines.append('<text'
+        f' x="{base_x - 2}"'
+        f' y="{base_y - total_height}"'
+        ' fill="black"'
+        ' font-size="6"'
+        ' text-anchor="end"'
+        ' dominant-baseline="middle"'
+        f'>10^{round(math.log10(max_bucket_rate))}</text>')
+    out_lines.append('<text'
+        f' x="{base_x - 2}"'
+        f' y="{base_y}"'
+        ' fill="black"'
+        ' font-size="6"'
+        ' text-anchor="end"'
+        ' dominant-baseline="middle"'
+        f'>10^{round(math.log10(min_bucket_rate))}</text>')
+    out_lines.append(f'<path d="M {base_x} {base_y} '
+                     f'L {base_x + total_width} {base_y}'
+                     f'L {base_x + total_width} {base_y - total_height}'
+                     f'L {base_x} {base_y - total_height}'
+                     f'Z" fill="none" stroke="black" stroke-width="0.5" />')
+
+
+def draw_svg(
+    *,
+    dem: stim.DetectorErrorModel,
+    det_hits: collections.Counter[int],
+    edge_hits: collections.Counter[Edge],
+    stat: sinter.AnonTaskStats,
+):
+    coords = dem.get_detector_coordinates()
+    edges = sorted(set(edge for edges in make_error_to_edges_list(dem) for edge in edges), key=lambda e: tuple(coords[e.a]))
+
+    def project(c: List[float]) -> complex:
+        return (c[0] + c[1]*1j + c[2] * (0.2 + 0.1j)) * 20
+
+    min_x = min(project(e).real for e in coords.values())
+    min_y = min(project(e).imag for e in coords.values())
+    max_x = max(project(e).real for e in coords.values())
+    max_y = max(project(e).imag for e in coords.values())
+    min_x -= 40
+    min_y -= 80
+    max_x += 40
+    max_y += 40
+    center = (min_x + max_x) / 2 + (min_y + max_y) / 2 * 1j
+
+    svg = [f"""<svg viewBox="{min_x} {min_y} {max_x - min_x} {max_y - min_y}" xmlns="http://www.w3.org/2000/svg">"""]
+
+    max_edge_hit = max(edge_hits.values(), default=0)
+    for e in edges:
+        a = project(coords[e.a])
+        if e.b is None:
+            b = a - center
+            if abs(b) > 0:
+                b /= abs(b)
+            b *= 40
+            b += a
+        else:
+            b = project(coords[e.b])
+        h = edge_hits[e]
+        c = (h + 1) / (max_edge_hit + 1)
+        r = max(0.01, (h + 1) / (max_edge_hit + 1))
+        svg.append(f'<path '
+                   f'd="M {a.real} {a.imag} L {b.real} {b.imag}" '
+                   f'fill="none" '
+                   f'stroke-width="{r}" '
+                   f'stroke="{rgb_grad(c)}" />')
+
+    max_node_hit = max(det_hits.values(), default=0)
+    for k, v in coords.items():
+        p = project(v)
+        h = det_hits[k]
+        c = (h + 1) / (max_node_hit + 2)
+        r = max(0.1, (h + 10) / (max_node_hit + 20)) * 2
+        svg.append(f'<circle '
+                   f'cx="{p.real}" '
+                   f'cy="{p.imag}" '
+                   f'r="{r}" '
+                   f'fill="{rgb_grad(c)}" '
+                   f'stroke="none" />')
+
+    draw_histogram(
+        out_lines=svg,
+        hits=edge_hits,
+        total_width=100,
+        total_height=30,
+        base_x=20,
+        base_y=-40,
+        stat=stat,
+        y_label='edges in bucket',
+        x_label='edge hit count bucket',
+        title='Histogram of Edges Along Logical Errors',
+    )
+
+    draw_histogram(
+        out_lines=svg,
+        hits=det_hits,
+        total_width=100,
+        total_height=30,
+        base_x=200,
+        base_y=-40,
+        stat=stat,
+        x_label='detector hit count bucket',
+        y_label='nodes in bucket',
+        title='Histogram of Detectors Along Logical Errors',
+    )
+
+    svg.append('<text'
+               f' x="{150}"'
+               f' y="{-12}"'
+               ' fill="black"'
+               ' font-size="6"'
+               ' text-anchor="middle"'
+               ' dominant-baseline="hanging"'
+               f'>sampled shots={stat.shots}, sampled logical errors={stat.errors}</text>')
+    svg.append('<text'
+               f' x="{150}"'
+               f' y="{-13}"'
+               ' fill="black"'
+               ' font-size="8"'
+               ' text-anchor="middle"'
+               ' dominant-baseline="bottom"'
+               f'>Heat Map of Edges and Detectors along Logical Errors</text>')
+
+    svg.append("</svg>")
+    return "\n".join(svg)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--circuit", type=str, default=None)
+    parser.add_argument("--stats", type=str, required=True)
+    parser.add_argument("--out", type=str, default=None)
+    args = parser.parse_args()
+
+    circuit = stim.Circuit.from_file(args.circuit)
+    dem = circuit.detector_error_model(decompose_errors=True, ignore_decomposition_failures=True)
+    task = sinter.Task(
+        circuit=circuit,
+        detector_error_model=dem,
+        decoder='pymatching-logical-err-count',
+        json_metadata=sinter.comma_separated_key_values(args.circuit),
+    )
+    all_stats = {
+        stat.strong_id: stat
+        for stat in sinter.read_stats_from_csv_files(args.stats)
+    }
+    circuit_stat: sinter.AnonTaskStats = all_stats.get(task.strong_id())
+    if circuit_stat is None:
+        print("No stats for circuit", file=sys.stderr)
+        sys.exit(1)
+    edge_hits = collections.Counter()
+    det_hits = collections.Counter()
+    for k, v in circuit_stat.custom_counts.items():
+        if ':' in k:
+            a, b = k.split(':')
+            a = int(a)
+            b = int(b) if b else None
+            edge_hits[Edge(a, b, -1)] += v
+        else:
+            det_hits[int(k)] += v
+
+    svg = draw_svg(
+        dem=dem,
+        det_hits=det_hits,
+        edge_hits=edge_hits,
+        stat=circuit_stat,
+    )
+    if args.out is None:
+        print(svg)
+    else:
+        with open(args.out, 'w') as f:
+            print(svg, file=f)
+
+
+if __name__ == '__main__':
+    main()

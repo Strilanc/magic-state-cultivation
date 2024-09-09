@@ -1,0 +1,27 @@
+PROMISE num_t_outputs=4
+PROMISE distance=2
+PROMISE num_t_used=16
+PROMISE num_t_checks=2
+
+ALLOC XXXX
+T Z__Y
+T _Z_Y
+T __ZY
+T ZZZY
+T _ZZZ
+T Z_ZZ
+T ZZ_Z
+T ZZZ_
+FLIP __XX
+ALLOC X4 X5
+SWAP 2 3 3 5
+CX 4 5 5 2
+S -X5
+T ___Z_Y
+T __ZZZY
+T ___ZZZ
+T __Z_ZZ
+T __ZZ_Z
+T __ZZZ_
+POSTSELECT_RELEASE -T4 -T5
+OUTPUT_RELEASE -T0 -T1 -T2 -T3

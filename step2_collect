@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+set -e
+cd "$( dirname "${BASH_SOURCE[0]}" )"
+cd "$(git rev-parse --show-toplevel)"
+
+PYTHONPATH=src sinter collect \
+    --metadata_func auto \
+    --circuits out/circuits/for_perfectionist_decoding/*.stim \
+    --decoders perfectionist \
+    --max_shots 1_000_000_000_000 \
+    --max_errors 1000 \
+    --custom_decoders "cultiv:sinter_samplers" \
+    --save_resume_filepath assets/stats.csv
+
+PYTHONPATH=src sinter collect \
+    --metadata_func auto \
+    --circuits out/circuits/for_desaturated_decoding_3/*.stim \
+    --decoders desaturation \
+    --max_shots 1_000_000_000 \
+    --custom_decoders "cultiv:sinter_samplers" \
+    --save_resume_filepath assets/stats.csv
+
+PYTHONPATH=src sinter collect \
+    --metadata_func auto \
+    --circuits out/circuits/for_desaturated_decoding_5/*.stim \
+    --decoders desaturation \
+    --max_shots 50_000_000_000 \
+    --custom_decoders "cultiv:sinter_samplers" \
+    --save_resume_filepath assets/stats.csv
+
+PYTHONPATH=src sinter collect \
+    --metadata_func auto \
+    --circuits out/circuits/for_intercept_sampling/*.stim \
+    --decoders twirl_intercept_t twirl_intercept_s twirl_intercept_z vec_intercept_t vec_intercept_s vec_intercept_z \
+    --max_shots 100_000_000 \
+    --max_errors 100 \
+    --custom_decoders "cultiv:sinter_samplers" \
+    --save_resume_filepath assets/stats.csv
+
+PYTHONPATH=src sinter collect \
+    --metadata_func auto \
+    --circuits out/circuits/for_matching/*.stim \
+    --decoders pymatching-gap \
+    --max_shots 40_000_000 \
+    --max_errors 1000 \
+    --custom_decoders "cultiv:sinter_samplers" \
+    --save_resume_filepath assets/stats.csv
+
+PYTHONPATH=src sinter collect \
+    --metadata_func auto \
+    --circuits out/circuits/for_color_gap_decoding/*.stim \
+    --decoders chromobius-gap \
+    --max_shots 10_000_000 \
+    --max_errors 1000 \
+    --custom_decoders "cultiv:sinter_samplers" \
+    --save_resume_filepath assets/stats.csv
+
+sinter collect \
+    --metadata_func auto \
+    --circuits out/circuits/for_correlated_matching/*.stim \
+    --max_shots 1_000_000_000 \
+    --max_errors 1000 \
+    --save_resume_filepath assets/stats.csv \
+    --decoders pymatching
+    # note: replaced 'sparse_blossom_correlated' with 'pymatching' so external users can run it
+    #--custom_decoders "gqec.decoding:make_custom_sinter_decoders_dict" \
+    #--decoders sparse_blossom_correlated
+
+./tools/write_historical_data_csv.py \
+  --in assets/stats.csv \
+  > assets/emulated-historical-stats.csv
+
+./tools/generate_injection_only_plot.py \
+  --cache_file assets/count_logical_errors_cache.txt \
+  > assets/emulated-enumeration-stats.csv

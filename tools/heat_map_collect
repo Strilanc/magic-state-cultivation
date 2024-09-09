@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+
+import argparse
+import collections
+import os
+import pathlib
+import time
+from typing import Optional, Dict, List, AbstractSet, Set, Any, Iterable
+
+import numpy as np
+import pymatching
+import sinter
+import stim
+
+
+class Edge:
+    def __init__(self, a: int, b: Optional[int], *, obs_mask: int):
+        self.a = a
+        self.b = b
+        self.obs_mask = obs_mask
+        assert b is None or a < b, f'{self}'
+
+    def __lt__(self, other: 'Edge') -> bool:
+        return (self.a, -1 if self.b is None else self.b) < (other.a, -1 if other.b is None else other.b)
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Edge):
+            return NotImplemented
+        return self.a == other.a and self.b == other.b
+
+    def __ne__(self, other: Any) -> bool:
+        return not (self == other)
+
+    def __hash__(self) -> int:
+        return hash((self.a, self.b))
+
+    def __str__(self):
+        if self.b is None:
+            return f'{self.a}:'
+        else:
+            return f'{self.a}:{self.b}'
+
+    def __repr__(self) -> str:
+        return f'Edge(a={self.a!r}, b={self.b!r}, obs_mask={self.obs_mask!r})'
+
+
+def _targets_to_edge_no_separator(targets: List[stim.DemTarget]) -> Edge | None:
+    flipped = 0
+    pair = []
+    for t in targets:
+        if t.is_logical_observable_id():
+            flipped ^= 1 << t.val
+        else:
+            assert t.is_relative_detector_id()
+            pair.append(t.val)
+    if not (1 <= len(pair) <= 2):
+        return None
+    if len(pair) == 1:
+        pair.append(None)
+    else:
+        pair = sorted(pair)
+    return Edge(pair[0], pair[1], obs_mask=flipped)
+
+
+def targets_to_edges(targets: List[stim.DemTarget]) -> List[Edge]:
+    edges = []
+    start = 0
+    while start < len(targets):
+        end = start + 1
+        while end < len(targets) and not targets[end].is_separator():
+            end += 1
+        edge = _targets_to_edge_no_separator(targets[start:end])
+        if edge is not None:
+            edges.append(edge)
+        start = end + 1
+    return edges
+
+
+def make_error_to_edges_list(dem: stim.DetectorErrorModel) -> list[list[Edge]]:
+    out = []
+    for inst in dem.flattened():
+        if inst.type == 'error':
+            out.append(targets_to_edges(inst.targets_copy()))
+    return out
+
+
+class CompiledLogicalErrorEdgeSampler(sinter.CompiledSampler):
+    def __init__(
+            self,
+            task: sinter.Task,
+    ):
+        self.dem = task.detector_error_model
+        self.matching = pymatching.Matching.from_detector_error_model(task.detector_error_model)
+        self.sampler = task.detector_error_model.compile_sampler()
+        self.e2i: dict[tuple[int, int], int] = {}
+        self.i2es: dict[int, list[Edge]] = {}
+        self.node_to_edges: Dict[int, Set[Edge]] = {}
+        self.error_edge_list: list[list[Edge]] = make_error_to_edges_list(task.detector_error_model)
+        self.num_dets = self.dem.num_detectors
+        for k, es in enumerate(self.error_edge_list):
+            if len(es) == 1:
+                e, = es
+                a = e.a
+                b = -1 if e.b is None else e.b
+                self.e2i[(a, b)] = k
+                self.e2i[(b, a)] = k
+            self.i2es[k] = es
+        for es in self.error_edge_list:
+            for e in es:
+                self.node_to_edges.setdefault(e.a, set()).add(e)
+                if e.b is not None:
+                    self.node_to_edges.setdefault(e.b, set()).add(e)
+
+        self.postselect_mask = task.postselection_mask
+
+    def sample(self, shots: int) -> sinter.AnonTaskStats:
+        t0 = time.monotonic()
+        dets, obs, error_data = self.sampler.sample(
+            shots=shots,
+            bit_packed=True,
+            return_errors=True,
+        )
+        num_discards = 0
+        num_errors = 0
+
+        edge_counter = collections.Counter()
+        for k in range(shots):
+            if self.postselect_mask is not None and np.any(dets[k] & self.postselect_mask):
+                num_discards += 1
+                continue
+
+            prediction = self.matching.decode_batch(
+                dets[k:k+1],
+                bit_packed_predictions=True,
+                bit_packed_shots=True,
+            )
+            if np.array_equal(prediction[0], obs[k]):
+                continue
+
+            num_errors += 1
+            udets = np.unpackbits(dets[k], bitorder='little', count=self.num_dets)
+            predicted_edges = self.matching.decode_to_edges_array(udets)
+
+            # Count detection events that appear in the logical error.
+            for z in np.flatnonzero(udets):
+                edge_counter[str(z)] += 1
+
+            for a, b in predicted_edges:
+                k2 = self.e2i[(a, b)]
+                assert len(self.i2es[k2]) == 1
+                assert {self.i2es[k2][0].a, self.i2es[k2][0].b} == {a, (None if b == -1 else b)}
+                error_data[k, k2 >> 3] ^= 1 << (k2 & 7)
+
+            all_differences = set()
+            for err in np.flatnonzero(np.unpackbits(error_data[k], bitorder='little')):
+                for edge in self.i2es[err]:
+                    if edge in all_differences:
+                        all_differences.remove(edge)
+                    else:
+                        all_differences.add(edge)
+            relevant_differences = edge_set_without_vacuous_components(all_differences, node_to_edges=self.node_to_edges)
+            for e in relevant_differences:
+                edge_counter[str(e)] += 1
+        t1 = time.monotonic()
+
+        return sinter.AnonTaskStats(
+            shots=shots,
+            errors=num_errors,
+            discards=num_discards,
+            seconds=t1 - t0,
+            custom_counts=edge_counter,
+        )
+
+
+class LogicalErrorEdgeSampler(sinter.Sampler):
+    def compiled_sampler_for_task(self, task: sinter.Task) -> sinter.CompiledSampler:
+        return CompiledLogicalErrorEdgeSampler(task)
+
+
+def edge_set_without_vacuous_components(relevant_edges: AbstractSet[Edge], *, node_to_edges: Dict[int, Iterable[Edge]]) -> Set[Edge]:
+    involved = []
+    seen = set()
+    for root_edge in relevant_edges:
+        if not root_edge.obs_mask or root_edge in seen:
+            continue
+        mask = 0
+        stack = [root_edge]
+        component = []
+        while stack:
+            e = stack.pop()
+            if e in seen or e not in relevant_edges:
+                continue
+            seen.add(e)
+            component.append(e)
+            mask ^= e.obs_mask
+            stack.extend(node_to_edges[e.a])
+            if e.b is not None:
+                stack.extend(node_to_edges[e.b])
+        if mask:
+            involved.extend(component)
+    return set(involved)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--circuit", type=str, required=True)
+    parser.add_argument("--save_resume_filepath", type=str, required=True)
+    parser.add_argument("--max_shots", type=int, required=True)
+    parser.add_argument("--max_errors", type=int, required=True)
+    args = parser.parse_args()
+    save_resume_filepath = pathlib.Path(args.save_resume_filepath).absolute()
+    max_shots = args.max_shots
+    max_errors = args.max_errors
+
+    circuit = stim.Circuit.from_file(args.circuit)
+    dem = circuit.detector_error_model(decompose_errors=True, ignore_decomposition_failures=True)
+    task = sinter.Task(
+        circuit=circuit,
+        detector_error_model=dem,
+        decoder='pymatching-logical-err-count',
+        json_metadata=sinter.comma_separated_key_values(args.circuit),
+    )
+    if save_resume_filepath.exists():
+        existing_stats = sinter.read_stats_from_csv_files(save_resume_filepath)
+        for stat in existing_stats:
+            if stat.strong_id == task.strong_id():
+                max_shots -= stat.shots
+                max_errors -= stat.errors
+    else:
+        existing_stats = []
+        with open(save_resume_filepath, 'w') as f:
+            print(sinter.CSV_HEADER, file=f)
+        print(sinter.CSV_HEADER)
+
+    def progress_callback(progress: sinter.Progress):
+        for stat in progress.new_stats:
+            with open(save_resume_filepath, 'a') as f:
+                print(stat, file=f)
+
+    sinter.collect(
+        num_workers=os.cpu_count(),
+        tasks=[task],
+        existing_data_filepaths=[save_resume_filepath],
+        max_shots=max_shots,
+        max_errors=max_errors,
+        progress_callback=progress_callback,
+        print_progress=True,
+        custom_decoders={'pymatching-logical-err-count': LogicalErrorEdgeSampler()},
+    )
+
+
+if __name__ == '__main__':
+    main()
