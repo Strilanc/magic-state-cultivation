@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "magic-state-cultivation"
+version = "0.1.0"
+description = "Code for the paper 'Magic state cultivation: growing T states as cheap as CNOT gates'"
+authors = [
+    { name = "Craig Gidney", email = "craig.gidney@gmail.com" }
+]
+license = { file = "LICENSE" }
+readme = "README.md"
+dependencies = [
+    "chromobius ~= 1.1.0",
+    "matplotlib",
+    "networkx",
+    "numpy",
+    "pymatching",
+    "pygltflib",
+    "pytest",
+    "scipy",
+    "sinter",
+    "stim"
+]
+requires-python = ">=3.7"
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "src"
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
